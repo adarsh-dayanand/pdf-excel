@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   DndContext,
   closestCenter,
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Trash2 } from "lucide-react";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
 import type { ComponentProps } from "react";
 
 interface DataTableProps {
@@ -100,11 +101,18 @@ const SortableRow = ({
 
 
 export function DataTable({ data, onDataChange }: DataTableProps) {
-  if (!data || data.length === 0) {
+  const [headers, setHeaders] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (data && data.length > 0) {
+      setHeaders(Object.keys(data[0]));
+    }
+  }, [data]);
+
+  if (!data || (data.length === 0 && headers.length === 0)) {
     return <p>No data to display.</p>;
   }
-
-  const headers = Object.keys(data[0] || {});
+  
   const rowIds = data.map((_, index) => `row-${index}`);
 
   const sensors = useSensors(
@@ -137,42 +145,58 @@ export function DataTable({ data, onDataChange }: DataTableProps) {
         onDataChange(arrayMove(data, oldIndex, newIndex));
     }
   };
+  
+  const handleAddRow = () => {
+    if (headers.length === 0) return;
+    const newRow = headers.reduce((acc, header) => {
+        (acc as any)[header] = "";
+        return acc;
+    }, {});
+    onDataChange([...data, newRow]);
+  };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="rounded-md border overflow-auto max-h-[60vh] relative">
-        <Table>
-          <TableHeader className="sticky top-0 bg-secondary z-10">
-            <TableRow>
-              <TableHead className="w-12 px-2 md:px-4">Move</TableHead>
-              {headers.map((header) => (
-                <TableHead key={header} className="font-bold px-2 md:px-4">
-                  {header}
-                </TableHead>
-              ))}
-              <TableHead className="w-12 px-2 md:px-4">Delete</TableHead>
-            </TableRow>
-          </TableHeader>
-          <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-            <TableBody>
-              {data.map((row, rowIndex) => (
-                <SortableRow
-                    key={rowIds[rowIndex]}
-                    row={row}
-                    rowIndex={rowIndex}
-                    headers={headers}
-                    handleInputChange={handleInputChange}
-                    handleDeleteRow={handleDeleteRow}
-                />
-              ))}
-            </TableBody>
-          </SortableContext>
-        </Table>
-      </div>
-    </DndContext>
+    <div className="space-y-4">
+        <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        >
+        <div className="rounded-md border overflow-auto max-h-[60vh] relative">
+            <Table>
+            <TableHeader className="sticky top-0 bg-secondary z-10">
+                <TableRow>
+                <TableHead className="w-12 px-2 md:px-4">Move</TableHead>
+                {headers.map((header) => (
+                    <TableHead key={header} className="font-bold px-2 md:px-4">
+                    {header}
+                    </TableHead>
+                ))}
+                <TableHead className="w-12 px-2 md:px-4">Delete</TableHead>
+                </TableRow>
+            </TableHeader>
+            <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+                <TableBody>
+                {data.map((row, rowIndex) => (
+                    <SortableRow
+                        key={rowIds[rowIndex]}
+                        row={row}
+                        rowIndex={rowIndex}
+                        headers={headers}
+                        handleInputChange={handleInputChange}
+                        handleDeleteRow={handleDeleteRow}
+                    />
+                ))}
+                </TableBody>
+            </SortableContext>
+            </Table>
+        </div>
+        </DndContext>
+        <div className="flex justify-end">
+            <Button onClick={handleAddRow} variant="outline">
+                <Plus className="mr-2 h-4 w-4" /> Add Row
+            </Button>
+        </div>
+    </div>
   );
 }
