@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import * as pdfjs from "pdfjs-dist";
+import { PDFDocument, PDFEncryptedPDFError, PDFInvalidPasswordError } from "pdf-lib";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -16,12 +16,6 @@ import { useAuth } from "@/components/auth-provider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-// Set worker path for pdfjs-dist from a CDN
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.mjs`;
-}
-
 
 type Step = "upload" | "loading" | "preview" | "error";
 type PdfState = { file: File; buffer: ArrayBuffer } | null;
@@ -63,8 +57,8 @@ export function ConverterClient() {
   };
 
   const handleExtractionLogic = async (pdfDataUri: string, originalFileName: string) => {
+    // This function should be entered with step="loading"
     setFileName(originalFileName.replace(/\.[^/.]+$/, ""));
-    // Note: setStep("loading") is called in attemptPdfLoad before this.
 
     try {
       const result = await extractTabularData({ pdfDataUri, isLoggedIn });
@@ -96,74 +90,80 @@ export function ConverterClient() {
         description: message,
         variant: "destructive",
       });
+    } finally {
+      setIsDecrypting(false);
     }
-  };
-
-  const attemptPdfLoad = async (buffer: ArrayBuffer, file: File, password?: string) => {
-      try {
-        if (!password) {
-            setStep("loading");
-        } else {
-            setIsDecrypting(true);
-        }
-
-        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer), password });
-        await loadingTask.promise;
-        
-        // If we reach here, the PDF is loaded (and decrypted if password was needed)
-        const pdfDataUri = await convertBufferToDataUri(buffer, file.type);
-        
-        setPasswordModalOpen(false);
-        setPdfPassword('');
-        await handleExtractionLogic(pdfDataUri, file.name);
-
-      } catch (error: any) {
-          if (error.name === 'PasswordException') {
-              if (password) { // A password was provided but it was wrong
-                  toast({
-                      title: "Invalid Password",
-                      description: "The password was incorrect. Please try again.",
-                      variant: "destructive",
-                  });
-                  setPdfPassword(""); // Clear the wrong password
-              } else { // No password was provided, so we need to ask for one
-                  setStep("upload"); // Revert loading state
-                  setPasswordModalOpen(true);
-              }
-          } else {
-              handleReset();
-              const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
-              setErrorMessage(message);
-              setStep("error");
-              toast({
-                  title: "PDF Load Error",
-                  description: message,
-                  variant: "destructive",
-              });
-          }
-      } finally {
-        setIsDecrypting(false);
-      }
   };
 
   const handleFileSelect = async (file: File) => {
     try {
+        setStep("loading");
         const buffer = await file.arrayBuffer();
-        setPdfState({ file, buffer });
-        await attemptPdfLoad(buffer, file);
-    } catch (e) {
-        handleReset();
-        const message = "Could not read the selected file.";
-        setErrorMessage(message);
-        setStep("error");
-        toast({ title: "File Read Error", description: message, variant: "destructive" });
+        setPdfState({ file, buffer }); 
+
+        await PDFDocument.load(buffer);
+        
+        // If the above line doesn't throw, the PDF is not encrypted. Proceed.
+        const pdfDataUri = await convertBufferToDataUri(buffer, file.type);
+        await handleExtractionLogic(pdfDataUri, file.name);
+
+    } catch (e: any) {
+        if (e instanceof PDFEncryptedPDFError) {
+            // It's encrypted, so we need a password.
+            setStep("upload");
+            setPasswordModalOpen(true);
+        } else {
+            handleReset();
+            const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
+            setErrorMessage(message);
+            setStep("error");
+            toast({
+                title: "PDF Load Error",
+                description: message,
+                variant: "destructive",
+            });
+        }
     }
   };
   
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pdfState || !pdfPassword || isDecrypting) return;
-    await attemptPdfLoad(pdfState.buffer, pdfState.file, pdfPassword);
+
+    setIsDecrypting(true);
+
+    try {
+        const pdfDoc = await PDFDocument.load(pdfState.buffer, {
+            password: pdfPassword,
+        });
+
+        // Close modal and proceed only on success
+        setPasswordModalOpen(false);
+        setStep("loading");
+
+        const unencryptedBytes = await pdfDoc.save();
+        const pdfDataUri = await convertBufferToDataUri(unencryptedBytes.buffer, pdfState.file.type);
+        await handleExtractionLogic(pdfDataUri, pdfState.file.name);
+
+    } catch (e: any) {
+        setIsDecrypting(false);
+        setPdfPassword("");
+
+        if (e instanceof PDFInvalidPasswordError) {
+            toast({
+                title: "Invalid Password",
+                description: "The password was incorrect. Please try again.",
+                variant: "destructive",
+            });
+        } else {
+            setPasswordModalOpen(false);
+            handleReset();
+            const message = "An unexpected error occurred while processing the PDF.";
+            setErrorMessage(message);
+            setStep("error");
+            toast({ title: "Processing Error", description: message, variant: "destructive" });
+        }
+    }
   };
 
   const handleDownload = () => {
@@ -200,7 +200,9 @@ export function ConverterClient() {
         {step === "loading" && (
             <div className="flex flex-col items-center justify-center gap-4 p-10 border-2 border-dashed rounded-lg">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                <h3 className="text-xl font-semibold">Extracting Data...</h3>
+                <h3 className="text-xl font-semibold">
+                  {isDecrypting ? "Decrypting PDF..." : "Extracting Data..."}
+                </h3>
                 <p className="text-muted-foreground">The AI is working its magic. This may take a moment.</p>
             </div>
         )}
