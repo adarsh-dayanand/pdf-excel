@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, FormEvent } from "react";
 import * as XLSX from "xlsx";
 import { PDFDocument } from "pdf-lib";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,11 @@ export function ConverterClient() {
   const [extractedData, setExtractedData] = useState<any[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [isPricingModalOpen, setPricingModalOpen] = useState(false);
-
   const [fileState, setFileState] = useState<FileState>(null);
   
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
   const [pdfPassword, setPdfPassword] = useState("");
-  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleReset = useCallback(() => {
     setStep("upload");
@@ -45,9 +44,9 @@ export function ConverterClient() {
     setFileState(null);
     setPasswordModalOpen(false);
     setPdfPassword("");
-    setIsDecrypting(false);
+    setIsProcessing(false);
   }, []);
-  
+
   const convertBufferToDataUri = (buffer: ArrayBuffer, type: string): string => {
     const bytes = new Uint8Array(buffer);
     let binary = '';
@@ -57,10 +56,8 @@ export function ConverterClient() {
     const base64 = window.btoa(binary);
     return `data:${type};base64,${base64}`;
   };
-  
+
   const startExtraction = async (pdfBuffer: ArrayBuffer, fileType: string) => {
-    setStep("loading");
-    
     try {
       const pdfDataUri = convertBufferToDataUri(pdfBuffer, fileType);
       const result = await extractTabularData({ pdfDataUri, isLoggedIn });
@@ -97,72 +94,58 @@ export function ConverterClient() {
     }
   };
 
-  const handleFileSelect = async (file: File) => {
-    handleReset();
+  const processPdf = useCallback(async (buffer: ArrayBuffer, password?: string) => {
+    if (!fileState) return;
     
-    try {
-      const buffer = await file.arrayBuffer();
-      setFileState({ name: file.name, type: file.type, buffer });
-      
-      // Attempt to load. This will throw an error if encrypted.
-      await PDFDocument.load(buffer);
+    setIsProcessing(true);
+    setStep("loading");
 
-      // If successful, it's not encrypted. Proceed.
-      await startExtraction(buffer, file.type);
+    try {
+      const pdfDoc = await PDFDocument.load(buffer, { password });
+      const unencryptedBytes = await pdfDoc.save();
+      
+      setPasswordModalOpen(false);
+      await startExtraction(unencryptedBytes.buffer, fileState.type);
 
     } catch (e: any) {
       if (e.name === 'PDFEncryptedPDFError') {
-        // PDF is password-protected, open the modal.
+        setStep("upload"); 
         setPasswordModalOpen(true);
+      } else if (e.name === 'PDFInvalidPasswordError') {
+        toast({
+          title: "Invalid Password",
+          description: "The password was incorrect. Please try again.",
+          variant: "destructive",
+        });
+        setPdfPassword("");
+        setStep("upload"); 
+        setPasswordModalOpen(true); 
       } else {
         const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
         setErrorMessage(message);
         setStep("error");
         toast({ title: "PDF Load Error", description: message, variant: "destructive" });
       }
+    } finally {
+        setIsProcessing(false);
     }
+  }, [fileState, isLoggedIn, toast]);
+
+  const handleFileSelect = async (file: File) => {
+    handleReset();
+    
+    const buffer = await file.arrayBuffer();
+    setFileState({ name: file.name, type: file.type, buffer });
+    
+    await processPdf(buffer);
   };
   
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!fileState || !pdfPassword) return;
-
-    setIsDecrypting(true);
-
-    try {
-      // Attempt to decrypt with the provided password
-      const pdfDoc = await PDFDocument.load(fileState.buffer, {
-        password: pdfPassword,
-      });
-
-      // Decryption successful. Save the unencrypted document bytes.
-      const unencryptedBytes = await pdfDoc.save();
-      
-      // Close modal and start processing with the unencrypted data
-      setPasswordModalOpen(false); 
-      await startExtraction(unencryptedBytes.buffer, fileState.type);
-
-    } catch (e: any) {
-      if (e.name === 'PDFInvalidPasswordError') {
-        toast({
-          title: "Invalid Password",
-          description: "The password was incorrect. Please try again.",
-          variant: "destructive",
-        });
-        setPdfPassword(""); // Clear password for re-entry
-      } else {
-        // Another error occurred during decryption
-        setPasswordModalOpen(false);
-        const message = "An unexpected error occurred while processing the PDF.";
-        setErrorMessage(message);
-        setStep("error");
-        toast({ title: "Processing Error", description: message, variant: "destructive" });
-      }
-    } finally {
-        setIsDecrypting(false);
-    }
+    await processPdf(fileState.buffer, pdfPassword);
   };
-
+  
   const handleDownload = () => {
     try {
       const worksheet = XLSX.utils.json_to_sheet(extractedData);
@@ -179,11 +162,13 @@ export function ConverterClient() {
   const uploadDescription = isLoggedIn
     ? "Select or drag and drop a PDF file containing accounting tables."
     : "Select or drag and drop a PDF file. Guest users are limited to 2 conversions every 6 hours.";
+  
+  const isLoading = step === "loading" || isProcessing;
 
   return (
     <>
       <div className="space-y-8">
-        {step === "upload" && (
+        {step === "upload" && !isLoading && (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl md:text-2xl"><FileUp /> Step 1: Upload your PDF</CardTitle>
@@ -195,17 +180,17 @@ export function ConverterClient() {
             </Card>
         )}
         
-        {step === "loading" && (
+        {isLoading && (
             <div className="flex flex-col items-center justify-center gap-4 p-10 border-2 border-dashed rounded-lg">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
                 <h3 className="text-xl font-semibold">
-                  Extracting Data...
+                  {step === 'loading' ? 'Extracting Data...' : 'Processing...'}
                 </h3>
-                <p className="text-muted-foreground">The AI is working its magic. This may take a moment.</p>
+                <p className="text-muted-foreground">This may take a moment.</p>
             </div>
         )}
 
-        {step === "preview" && (
+        {step === "preview" && !isLoading && (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl md:text-2xl"><Sheet /> Step 2: Preview & Download</CardTitle>
@@ -221,7 +206,7 @@ export function ConverterClient() {
             </Card>
         )}
 
-        {step === "error" && (
+        {step === "error" && !isLoading && (
             <Card className="border-destructive">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-destructive text-xl md:text-2xl"><AlertCircle /> Extraction Failed</CardTitle>
@@ -237,26 +222,26 @@ export function ConverterClient() {
 
       <Dialog open={isPasswordModalOpen} onOpenChange={setPasswordModalOpen}>
         <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Password Required</DialogTitle>
-                <DialogDescription>
-                    This PDF file is password protected. Please enter the password to continue.
-                </DialogDescription>
-            </DialogHeader>
             <form onSubmit={handlePasswordSubmit}>
-                <fieldset disabled={isDecrypting} className="space-y-4">
+                <DialogHeader>
+                    <DialogTitle>Password Required</DialogTitle>
+                    <DialogDescription>
+                        This PDF file is password protected. Please enter the password to continue.
+                    </DialogDescription>
+                </DialogHeader>
+                <fieldset disabled={isProcessing} className="space-y-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="password-input" className="text-right">Password</Label>
                         <Input id="password-input" type="password" value={pdfPassword} onChange={(e) => setPdfPassword(e.target.value)} className="col-span-3" autoFocus />
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={handleReset}>Cancel</Button>
-                        <Button type="submit" disabled={!pdfPassword || isDecrypting}>
-                            {isDecrypting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Submit
-                        </Button>
-                    </DialogFooter>
                 </fieldset>
+                <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={handleReset}>Cancel</Button>
+                    <Button type="submit" disabled={!pdfPassword || isProcessing}>
+                        {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Submit
+                    </Button>
+                </DialogFooter>
             </form>
         </DialogContent>
       </Dialog>
