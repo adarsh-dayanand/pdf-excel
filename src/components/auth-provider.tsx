@@ -1,7 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode, useMemo } from "react";
+import { createContext, useContext, useState, ReactNode, useMemo, useEffect } from "react";
 import type { User } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 type AuthContextType = {
   isLoggedIn: boolean;
@@ -15,23 +17,35 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = () => {
-    setIsLoading(true);
-    // This is a mock login. In a real app, you would use Firebase Auth.
-    setTimeout(() => {
-      setUser({
-        displayName: "Demo User",
-        email: "demo@excelconvert.com",
-        photoURL: `https://placehold.co/100x100.png`,
-      } as User);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       setIsLoading(false);
-    }, 1000);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const login = async () => {
+    setIsLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Firebase login error:", error);
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Firebase logout error:", error);
+      setIsLoading(false);
+    }
   };
 
   const value = useMemo(
