@@ -1,12 +1,18 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { generateImage } from "@/ai/flows/generate-image-flow";
 
 
 export default async function Home() {
   
+  const { imageDataUri } = await generateImage({
+    prompt:
+      "A visually appealing graphic representing the conversion of a PDF document into an Excel spreadsheet. Show a stylized PDF icon transforming into a stylized Excel icon, with data flowing between them. Use a clean, modern aesthetic.",
+  });
 
   return (
     <>
