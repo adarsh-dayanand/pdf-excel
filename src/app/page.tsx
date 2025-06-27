@@ -24,7 +24,7 @@ export default function Home() {
           <div className="container mx-auto px-4 md:px-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_550px] lg:gap-12 xl:grid-cols-[1fr_650px] items-center">
               <div className="flex flex-col justify-center space-y-4 text-center lg:text-left">
-                <div className="space-y-2">
+                <div className="space-y-2 mt-4">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
                     <span className="bg-gradient-to-r from-primary via-accent to-secondary-foreground bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">Convert PDF Tables to Excel with AI. Securely.</span>
                   </h1>
