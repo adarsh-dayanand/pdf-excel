@@ -105,7 +105,7 @@ export function ConverterClient() {
         {step === "upload" && (
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><FileUp /> Step 1: Upload your PDF</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-xl md:text-2xl"><FileUp /> Step 1: Upload your PDF</CardTitle>
                     <CardDescription>{uploadDescription}</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -125,7 +125,7 @@ export function ConverterClient() {
         {step === "preview" && (
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Sheet /> Step 2: Preview, Edit & Download</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-xl md:text-2xl"><Sheet /> Step 2: Preview & Download</CardTitle>
                     <CardDescription>Review the extracted data. You can edit any cell directly. When ready, download as an Excel file.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -141,7 +141,7 @@ export function ConverterClient() {
         {step === "error" && (
             <Card className="border-destructive">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-destructive"><AlertCircle /> Extraction Failed</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-destructive text-xl md:text-2xl"><AlertCircle /> Extraction Failed</CardTitle>
                     <CardDescription className="text-destructive">{errorMessage}</CardDescription>
                 </CardHeader>
                 <CardContent>

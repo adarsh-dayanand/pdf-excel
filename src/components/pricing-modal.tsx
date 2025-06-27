@@ -19,7 +19,7 @@ interface PricingModalProps {
 export function PricingModal({ isOpen, onOpenChange }: PricingModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="w-[95vw] rounded-lg sm:w-full sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-center text-3xl font-headline">Upgrade to Pro</DialogTitle>
           <DialogDescription className="text-center">
@@ -32,9 +32,9 @@ export function PricingModal({ isOpen, onOpenChange }: PricingModalProps) {
             price="0"
             description="For casual use"
             features={[
-              "5 PDF conversions per day",
+              "2 PDF conversions per 6 hours",
               "Standard AI extraction",
-              "Email support",
+              "Community support",
             ]}
             isCurrent={true}
           />
@@ -46,7 +46,7 @@ export function PricingModal({ isOpen, onOpenChange }: PricingModalProps) {
               "Unlimited PDF conversions",
               "Advanced AI extraction",
               "Priority email support",
-              "Download history",
+              "Download history (coming soon)",
             ]}
             isCurrent={false}
           />

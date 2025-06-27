@@ -3,20 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import HeroImage from "../../assets/image.png"
+import { generateImage } from "@/ai/flows/generate-image-flow";
 
 export default async function Home() {
+  const { imageDataUri } = await generateImage({ prompt: 'An image showing a PDF document icon transforming into an Excel spreadsheet icon, with binary code and arrows indicating the conversion process. The style should be modern and clean, with a tech-inspired aesthetic.' });
 
   return (
     <>
-      <section className="w-full flex justify-center items-center pt-3 flex-1">
-        <div className="container px-4">
+      <section className="w-full flex-1 flex items-center justify-center">
+        <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center space-y-8 text-center">
             <div className="space-y-4">
-              <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
+              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
                 Convert PDF Tables to Excel with AI. Securely.
               </h1>
-              <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
+              <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl">
                 Upload your PDF with accounting tables, and let our AI
                 instantly extract the data into a clean, editable Excel
                 spreadsheet. Your data is processed securely and is never
@@ -29,7 +30,7 @@ export default async function Home() {
               </Button>
             </div>
             <Image
-              src={HeroImage}
+              src={imageDataUri}
               width="600"
               height="400"
               alt="An AI-generated image representing PDF to Excel conversion"
