@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -10,30 +11,20 @@ import { FileUploader } from "@/components/file-uploader";
 import { DataTable } from "@/components/data-table";
 import { AlertCircle, FileUp, Loader2, Repeat, Sheet } from "lucide-react";
 import { PricingModal } from "@/components/pricing-modal";
+import { useAuth } from "@/components/auth-provider";
 
 type Step = "upload" | "loading" | "preview" | "error";
 
 export function ConverterClient() {
   const { toast } = useToast();
+  const { isLoggedIn } = useAuth();
   const [step, setStep] = useState<Step>("upload");
   const [extractedData, setExtractedData] = useState<any[]>([]);
   const [fileName, setFileName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [conversionCount, setConversionCount] = useState(0);
   const [isPricingModalOpen, setPricingModalOpen] = useState(false);
-  const FREE_TIER_LIMIT = 5;
-
+  
   const handleFileSelect = async (file: File) => {
-    if (conversionCount >= FREE_TIER_LIMIT) {
-      setPricingModalOpen(true);
-      toast({
-        title: "Free Limit Reached",
-        description: "Please upgrade to Pro for unlimited conversions.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setStep("loading");
     setFileName(file.name.replace(/\.[^/.]+$/, ""));
 
@@ -42,7 +33,7 @@ export function ConverterClient() {
     reader.onload = async () => {
       try {
         const pdfDataUri = reader.result as string;
-        const result = await extractTabularData({ pdfDataUri });
+        const result = await extractTabularData({ pdfDataUri, isLoggedIn });
         
         if (!result.tabularData || result.tabularData.trim() === '[]' || result.tabularData.trim() === '{}') {
            throw new Error("No tabular data found in the PDF. Please try another file.");
@@ -55,13 +46,15 @@ export function ConverterClient() {
 
         setExtractedData(parsedData);
         setStep("preview");
-        setConversionCount(prev => prev + 1);
         toast({
           title: "Extraction Successful!",
           description: "Your data has been extracted. You can now preview and edit it.",
         });
       } catch (error: any) {
         const message = error.message || "An unexpected error occurred during extraction.";
+        if (message.includes("exceeded the limit")) {
+          setPricingModalOpen(true);
+        }
         setErrorMessage(message);
         setStep("error");
         toast({
@@ -101,6 +94,10 @@ export function ConverterClient() {
     setFileName("");
     setErrorMessage("");
   };
+  
+  const uploadDescription = isLoggedIn
+    ? "Select or drag and drop a PDF file containing accounting tables."
+    : "Select or drag and drop a PDF file. Guest users are limited to 2 conversions every 6 hours.";
 
   return (
     <>
@@ -109,7 +106,7 @@ export function ConverterClient() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><FileUp /> Step 1: Upload your PDF</CardTitle>
-                    <CardDescription>Select or drag and drop a PDF file containing accounting tables. You have {FREE_TIER_LIMIT - conversionCount} free conversions left today.</CardDescription>
+                    <CardDescription>{uploadDescription}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <FileUploader onFileSelect={handleFileSelect} />
