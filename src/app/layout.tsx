@@ -13,19 +13,30 @@ export const metadata: Metadata = {
     default: `${CONSTANTS.APP_NAME} | Convert PDF Tables to Excel with AI`,
     template: `%s | ${CONSTANTS.APP_NAME}`,
   },
-  description: "Instantly and securely convert PDF files with accounting tables into editable Excel spreadsheets using our advanced AI. Your data is processed securely and is never stored.",
-  keywords: ["PDF to Excel", "Convert PDF", "Accounting", "Data Extraction", "AI Converter", "Excel Spreadsheet", "PDF table extractor"],
+  description:
+    "Convert PDF tables to Excel spreadsheets instantly using AI. Secure, fast, and private PDF to Excel converter built for accounting, finance, and data extraction needs.",
+  keywords: [
+    "PDF to Excel",
+    "Convert PDF",
+    "AI Converter",
+    "Accounting Tables",
+    "Data Extraction",
+    "PDF Table Extractor",
+    "Spreadsheet from PDF",
+    "OCR PDF to Excel",
+  ],
   openGraph: {
     title: `${CONSTANTS.APP_NAME} | AI-Powered PDF to Excel Converter`,
-    description: "Effortlessly extract tables from your PDF documents and convert them to Excel. Secure, private, and powered by AI.",
+    description:
+      "Extract accounting tables from PDF files and convert them to Excel using AI. Fast, secure, and no data stored.",
     url: siteUrl,
     siteName: CONSTANTS.APP_NAME,
     images: [
       {
-        url: 'https://pdf-excel.netlify.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimage.6552c00d.png&w=640&q=75',
+        url: `${siteUrl}/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimage.6552c00d.png&w=1200&q=90`,
         width: 1200,
         height: 630,
-        alt: `${CONSTANTS.APP_NAME} - PDF to Excel with AI`,
+        alt: `${CONSTANTS.APP_NAME} - Convert PDF to Excel`,
       },
     ],
     locale: "en_US",
@@ -33,9 +44,21 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${CONSTANTS.APP_NAME} | AI-Powered PDF to Excel Converter`,
-    description: "Instantly convert your PDF tables to Excel. Secure, fast, and accurate, powered by AI.",
-    images: ['https://pdf-excel.netlify.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimage.6552c00d.png&w=640&q=75', 'https://pdf-excel.netlify.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimage2.2b0ea90d.png&w=640&q=75'],
+    title: `${CONSTANTS.APP_NAME} | Convert PDF to Excel`,
+    description:
+      "Convert your PDF tables to Excel in seconds using our secure and AI-powered tool.",
+    images: [
+      `${siteUrl}/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimage.6552c00d.png&w=1200&q=90`,
+      `${siteUrl}/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fimage2.2b0ea90d.png&w=1200&q=90`,
+    ],
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
+  themeColor: "#ffffff",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -55,6 +78,23 @@ export default function RootLayout({
         />
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1688837718282158"
           crossOrigin="anonymous"></script>
+
+        <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "WebApplication",
+                name: CONSTANTS.APP_NAME,
+                url: siteUrl,
+                description:
+                  "Convert PDF files with tables into Excel spreadsheets using advanced AI. Secure, fast, and accurate.",
+                applicationCategory: "BusinessApplication",
+                operatingSystem: "All",
+              }),
+            }}
+          ></script>
+
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
         <AuthProvider>

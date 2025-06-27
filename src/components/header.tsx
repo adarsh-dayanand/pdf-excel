@@ -16,6 +16,7 @@ import { LogOut, Rocket, User as UserIcon } from "lucide-react";
 import { ExcelConvertLogo, GoogleLogo } from "./icons";
 import { useState } from "react";
 import { PricingModal } from "./pricing-modal";
+import CONSTANTS from "@/constants";
 
 export function Header() {
   const { isLoggedIn, user, login, logout, isLoading } = useAuth();
@@ -29,7 +30,7 @@ export function Header() {
             <Link href="/" className="flex items-center space-x-2">
               <ExcelConvertLogo className="h-6 w-6 text-primary" />
               <span className="hidden font-bold font-headline sm:inline-block">
-                ExcelConvert
+                {CONSTANTS.APP_NAME}
               </span>
             </Link>
             <nav className="flex items-center space-x-6 text-sm font-medium">
