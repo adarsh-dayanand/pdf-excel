@@ -3,13 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { generateImage } from "@/ai/flows/generate-image-flow";
+import HeroImage from "../../assets/image.png"
 
 export default async function Home() {
-  const { imageDataUri } = await generateImage({
-    prompt:
-      "A visually appealing and modern graphic representing the conversion of a PDF document into an Excel spreadsheet. The design should be clean, abstract, and easily understandable, featuring stylized icons for PDF and spreadsheets with an arrow indicating transformation. Use a soft, professional color palette that complements a tech application.",
-  });
 
   return (
     <>
@@ -33,7 +29,7 @@ export default async function Home() {
               </Button>
             </div>
             <Image
-              src={imageDataUri}
+              src={HeroImage}
               width="600"
               height="400"
               alt="An AI-generated image representing PDF to Excel conversion"
