@@ -56,7 +56,6 @@ export function ConverterClient() {
   };
 
   const handleExtractionLogic = async (pdfDataUri: string, originalFileName: string) => {
-    // This function should be entered with step="loading"
     setFileName(originalFileName.replace(/\.[^/.]+$/, ""));
 
     try {
@@ -81,9 +80,13 @@ export function ConverterClient() {
       const message = error.message || "An unexpected error occurred during extraction.";
       if (message.includes("exceeded the limit")) {
         setPricingModalOpen(true);
+        // If limit is exceeded, we don't want to show the generic error state.
+        // We reset to upload so they can see the pricing modal clearly.
+        handleReset();
+      } else {
+        setErrorMessage(message);
+        setStep("error");
       }
-      setErrorMessage(message);
-      setStep("error");
       toast({
         title: "Extraction Failed",
         description: message,
@@ -95,33 +98,32 @@ export function ConverterClient() {
   };
 
   const handleFileSelect = async (file: File) => {
+    handleReset();
+    setStep("loading");
+    
     try {
-        setStep("loading");
-        const buffer = await file.arrayBuffer();
-        setPdfState({ file, buffer }); 
+      const buffer = await file.arrayBuffer();
+      setPdfState({ file, buffer });
 
-        await PDFDocument.load(buffer);
-        
-        // If the above line doesn't throw, the PDF is not encrypted. Proceed.
-        const pdfDataUri = await convertBufferToDataUri(buffer, file.type);
-        await handleExtractionLogic(pdfDataUri, file.name);
+      // Try to load the PDF. This will throw an error if it's encrypted.
+      await PDFDocument.load(buffer);
+      
+      // If it loaded without error, it's not encrypted. Proceed.
+      const pdfDataUri = await convertBufferToDataUri(buffer, file.type);
+      await handleExtractionLogic(pdfDataUri, file.name);
 
     } catch (e: any) {
-        if (e.name === 'PDFEncryptedPDFError') {
-            // It's encrypted, so we need a password.
-            setStep("upload");
-            setPasswordModalOpen(true);
-        } else {
-            handleReset();
-            const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
-            setErrorMessage(message);
-            setStep("error");
-            toast({
-                title: "PDF Load Error",
-                description: message,
-                variant: "destructive",
-            });
-        }
+      if (e.name === 'PDFEncryptedPDFError') {
+        // PDF is password-protected.
+        setStep("upload"); // Go back to upload UI behind the modal
+        setPasswordModalOpen(true);
+      } else {
+        // Another error occurred (e.g., corrupted file)
+        const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
+        setErrorMessage(message);
+        setStep("error");
+        toast({ title: "PDF Load Error", description: message, variant: "destructive" });
+      }
     }
   };
   
@@ -132,36 +134,37 @@ export function ConverterClient() {
     setIsDecrypting(true);
 
     try {
-        const pdfDoc = await PDFDocument.load(pdfState.buffer, {
-            password: pdfPassword,
-        });
+      // Attempt to load the document with the provided password.
+      const pdfDoc = await PDFDocument.load(pdfState.buffer, {
+        password: pdfPassword,
+      });
 
-        // Close modal and proceed only on success
-        setPasswordModalOpen(false);
-        setStep("loading");
+      // If successful, close the modal and proceed with extraction.
+      setPasswordModalOpen(false);
+      setStep("loading");
 
-        const unencryptedBytes = await pdfDoc.save();
-        const pdfDataUri = await convertBufferToDataUri(unencryptedBytes.buffer, pdfState.file.type);
-        await handleExtractionLogic(pdfDataUri, pdfState.file.name);
+      const unencryptedBytes = await pdfDoc.save();
+      const pdfDataUri = await convertBufferToDataUri(unencryptedBytes.buffer, pdfState.file.type);
+      await handleExtractionLogic(pdfDataUri, pdfState.file.name);
 
     } catch (e: any) {
-        setIsDecrypting(false);
-        setPdfPassword("");
+      setIsDecrypting(false); // Stop the spinner
+      setPdfPassword("");   // Clear the password input
 
-        if (e.name === 'PDFInvalidPasswordError') {
-            toast({
-                title: "Invalid Password",
-                description: "The password was incorrect. Please try again.",
-                variant: "destructive",
-            });
-        } else {
-            setPasswordModalOpen(false);
-            handleReset();
-            const message = "An unexpected error occurred while processing the PDF.";
-            setErrorMessage(message);
-            setStep("error");
-            toast({ title: "Processing Error", description: message, variant: "destructive" });
-        }
+      if (e.name === 'PDFInvalidPasswordError') {
+        toast({
+          title: "Invalid Password",
+          description: "The password was incorrect. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        // Another error occurred during decryption
+        setPasswordModalOpen(false);
+        const message = "An unexpected error occurred while processing the PDF.";
+        setErrorMessage(message);
+        setStep("error");
+        toast({ title: "Processing Error", description: message, variant: "destructive" });
+      }
     }
   };
 
@@ -200,7 +203,7 @@ export function ConverterClient() {
             <div className="flex flex-col items-center justify-center gap-4 p-10 border-2 border-dashed rounded-lg">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
                 <h3 className="text-xl font-semibold">
-                  {isDecrypting ? "Decrypting PDF..." : "Extracting Data..."}
+                  Extracting Data...
                 </h3>
                 <p className="text-muted-foreground">The AI is working its magic. This may take a moment.</p>
             </div>
@@ -236,7 +239,7 @@ export function ConverterClient() {
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
-      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => { if (!isOpen) handleReset(); else setPasswordModalOpen(true); }}>
+      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => !isOpen && handleReset()}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Password Required</DialogTitle>
@@ -252,7 +255,7 @@ export function ConverterClient() {
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="ghost" onClick={handleReset}>Cancel</Button>
-                        <Button type="submit" disabled={isDecrypting}>
+                        <Button type="submit" disabled={!pdfPassword || isDecrypting}>
                             {isDecrypting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit
                         </Button>
