@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useState } from "react";
 import * as XLSX from "xlsx";
+import * as pdfjs from "pdfjs-dist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +16,11 @@ import { useAuth } from "@/components/auth-provider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PDFDocument } from 'pdf-lib';
+
+// Set worker path for pdfjs-dist from a CDN
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.mjs`;
+}
 
 
 type Step = "upload" | "loading" | "preview" | "error";
@@ -46,9 +52,19 @@ export function ConverterClient() {
     setIsDecrypting(false);
   };
 
+  const convertBufferToDataUri = (buffer: ArrayBuffer, type: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const blob = new Blob([buffer], { type });
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(blob);
+    });
+  };
+
   const handleExtractionLogic = async (pdfDataUri: string, originalFileName: string) => {
     setFileName(originalFileName.replace(/\.[^/.]+$/, ""));
-    setStep("loading");
+    // Note: setStep("loading") is called in attemptPdfLoad before this.
 
     try {
       const result = await extractTabularData({ pdfDataUri, isLoggedIn });
@@ -80,8 +96,6 @@ export function ConverterClient() {
         description: message,
         variant: "destructive",
       });
-    } finally {
-        setPdfState(null);
     }
   };
 
@@ -89,28 +103,31 @@ export function ConverterClient() {
       try {
         if (!password) {
             setStep("loading");
+        } else {
+            setIsDecrypting(true);
         }
-        // The password option is valid for pdf-lib, but we cast to any to bypass a potential TS definition issue.
-        const pdfDoc = await PDFDocument.load(buffer, { password } as any);
-        const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
+
+        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer), password });
+        await loadingTask.promise;
+        
+        // If we reach here, the PDF is loaded (and decrypted if password was needed)
+        const pdfDataUri = await convertBufferToDataUri(buffer, file.type);
         
         setPasswordModalOpen(false);
         setPdfPassword('');
-        setIsDecrypting(false);
         await handleExtractionLogic(pdfDataUri, file.name);
 
       } catch (error: any) {
-          setIsDecrypting(false);
-          if (error.name === 'PDFInvalidPasswordError') {
-              if (password) {
+          if (error.name === 'PasswordException') {
+              if (password) { // A password was provided but it was wrong
                   toast({
                       title: "Invalid Password",
                       description: "The password was incorrect. Please try again.",
                       variant: "destructive",
                   });
-                  setPdfPassword("");
-              } else {
-                  setStep("upload");
+                  setPdfPassword(""); // Clear the wrong password
+              } else { // No password was provided, so we need to ask for one
+                  setStep("upload"); // Revert loading state
                   setPasswordModalOpen(true);
               }
           } else {
@@ -124,6 +141,8 @@ export function ConverterClient() {
                   variant: "destructive",
               });
           }
+      } finally {
+        setIsDecrypting(false);
       }
   };
 
@@ -144,8 +163,6 @@ export function ConverterClient() {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pdfState || !pdfPassword || isDecrypting) return;
-
-    setIsDecrypting(true);
     await attemptPdfLoad(pdfState.buffer, pdfState.file, pdfPassword);
   };
 
