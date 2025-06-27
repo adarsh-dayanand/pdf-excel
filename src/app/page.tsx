@@ -26,7 +26,7 @@ export default function Home() {
               <div className="flex flex-col justify-center space-y-4 text-center lg:text-left">
                 <div className="space-y-2">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
-                    Convert PDF Tables to Excel with AI. Securely.
+                    Convert PDF Tables to Excel with <span className="bg-gradient-to-r from-primary via-accent to-secondary-foreground bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">AI.</span> <span className="text-primary">Securely.</span>
                   </h1>
                   <p className="max-w-[600px] text-lg text-muted-foreground md:text-xl lg:mx-0">
                     Upload your PDF with accounting tables, and let our AI
