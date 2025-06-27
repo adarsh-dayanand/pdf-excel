@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { PDFDocument, PDFEncryptedPDFError, PDFInvalidPasswordError } from "pdf-lib";
+import { PDFDocument } from "pdf-lib";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -108,7 +107,7 @@ export function ConverterClient() {
         await handleExtractionLogic(pdfDataUri, file.name);
 
     } catch (e: any) {
-        if (e instanceof PDFEncryptedPDFError) {
+        if (e.name === 'PDFEncryptedPDFError') {
             // It's encrypted, so we need a password.
             setStep("upload");
             setPasswordModalOpen(true);
@@ -149,7 +148,7 @@ export function ConverterClient() {
         setIsDecrypting(false);
         setPdfPassword("");
 
-        if (e instanceof PDFInvalidPasswordError) {
+        if (e.name === 'PDFInvalidPasswordError') {
             toast({
                 title: "Invalid Password",
                 description: "The password was incorrect. Please try again.",
