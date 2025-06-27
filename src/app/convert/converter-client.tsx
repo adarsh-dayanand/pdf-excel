@@ -17,7 +17,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type Step = "upload" | "loading" | "preview" | "error";
-type PdfState = { file: File; buffer: ArrayBuffer } | null;
+
+// Keep track of the file and its raw data buffer
+type PdfFileState = {
+  file: File;
+  buffer: ArrayBuffer;
+} | null;
 
 
 export function ConverterClient() {
@@ -29,7 +34,10 @@ export function ConverterClient() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isPricingModalOpen, setPricingModalOpen] = useState(false);
   
-  const [pdfState, setPdfState] = useState<PdfState>(null);
+  // State for the PDF file being processed
+  const [pdfFileState, setPdfFileState] = useState<PdfFileState>(null);
+  
+  // State for the password modal
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
   const [pdfPassword, setPdfPassword] = useState("");
   const [isDecrypting, setIsDecrypting] = useState(false);
@@ -39,23 +47,24 @@ export function ConverterClient() {
     setExtractedData([]);
     setFileName("");
     setErrorMessage("");
-    setPdfState(null);
-    setPdfPassword("");
+    setPdfFileState(null);
     setPasswordModalOpen(false);
+    setPdfPassword("");
     setIsDecrypting(false);
   };
 
-  const convertBufferToDataUri = (buffer: ArrayBuffer, type: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const blob = new Blob([buffer], { type });
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-        reader.readAsDataURL(blob);
-    });
+  const convertBufferToDataUri = (buffer: ArrayBuffer, type: string): string => {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = window.btoa(binary);
+    return `data:${type};base64,${base64}`;
   };
-
-  const handleExtractionLogic = async (pdfDataUri: string, originalFileName: string) => {
+  
+  const processAndExtract = async (pdfDataUri: string, originalFileName: string) => {
+    setStep("loading");
     setFileName(originalFileName.replace(/\.[^/.]+$/, ""));
 
     try {
@@ -74,14 +83,12 @@ export function ConverterClient() {
       setStep("preview");
       toast({
         title: "Extraction Successful!",
-        description: "Your data has been extracted. You can now preview and edit it.",
+        description: "Your data has been extracted.",
       });
     } catch (error: any) {
       const message = error.message || "An unexpected error occurred during extraction.";
       if (message.includes("exceeded the limit")) {
         setPricingModalOpen(true);
-        // If limit is exceeded, we don't want to show the generic error state.
-        // We reset to upload so they can see the pricing modal clearly.
         handleReset();
       } else {
         setErrorMessage(message);
@@ -94,28 +101,28 @@ export function ConverterClient() {
       });
     } finally {
       setIsDecrypting(false);
+      setPasswordModalOpen(false);
     }
   };
 
   const handleFileSelect = async (file: File) => {
     handleReset();
-    setStep("loading");
     
     try {
       const buffer = await file.arrayBuffer();
-      setPdfState({ file, buffer });
+      // Keep a reference to the uploaded file's data
+      setPdfFileState({ file, buffer });
 
-      // Try to load the PDF. This will throw an error if it's encrypted.
+      // Attempt to load the PDF. This will throw an error if it's encrypted.
       await PDFDocument.load(buffer);
       
-      // If it loaded without error, it's not encrypted. Proceed.
-      const pdfDataUri = await convertBufferToDataUri(buffer, file.type);
-      await handleExtractionLogic(pdfDataUri, file.name);
+      // If no error, it's not encrypted. Proceed.
+      const pdfDataUri = convertBufferToDataUri(buffer, file.type);
+      await processAndExtract(pdfDataUri, file.name);
 
     } catch (e: any) {
       if (e.name === 'PDFEncryptedPDFError') {
-        // PDF is password-protected.
-        setStep("upload"); // Go back to upload UI behind the modal
+        // PDF is password-protected, open the modal.
         setPasswordModalOpen(true);
       } else {
         // Another error occurred (e.g., corrupted file)
@@ -129,34 +136,32 @@ export function ConverterClient() {
   
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pdfState || !pdfPassword || isDecrypting) return;
+    if (!pdfFileState || !pdfPassword) return;
 
     setIsDecrypting(true);
 
     try {
-      // Attempt to load the document with the provided password.
-      const pdfDoc = await PDFDocument.load(pdfState.buffer, {
+      // Attempt to decrypt with the provided password
+      const pdfDoc = await PDFDocument.load(pdfFileState.buffer, {
         password: pdfPassword,
       });
 
-      // If successful, close the modal and proceed with extraction.
-      setPasswordModalOpen(false);
-      setStep("loading");
-
+      // Decryption successful. Save the unencrypted document.
       const unencryptedBytes = await pdfDoc.save();
-      const pdfDataUri = await convertBufferToDataUri(unencryptedBytes.buffer, pdfState.file.type);
-      await handleExtractionLogic(pdfDataUri, pdfState.file.name);
+      const pdfDataUri = convertBufferToDataUri(unencryptedBytes.buffer, pdfFileState.file.type);
+      
+      // Close the modal and start processing
+      setPasswordModalOpen(false); 
+      await processAndExtract(pdfDataUri, pdfFileState.file.name);
 
     } catch (e: any) {
-      setIsDecrypting(false); // Stop the spinner
-      setPdfPassword("");   // Clear the password input
-
       if (e.name === 'PDFInvalidPasswordError') {
         toast({
           title: "Invalid Password",
           description: "The password was incorrect. Please try again.",
           variant: "destructive",
         });
+        setPdfPassword(""); // Clear password for re-entry
       } else {
         // Another error occurred during decryption
         setPasswordModalOpen(false);
@@ -165,6 +170,8 @@ export function ConverterClient() {
         setStep("error");
         toast({ title: "Processing Error", description: message, variant: "destructive" });
       }
+    } finally {
+        setIsDecrypting(false);
     }
   };
 
@@ -239,7 +246,13 @@ export function ConverterClient() {
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
-      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => !isOpen && handleReset()}>
+      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => {
+        // Only reset if the user is explicitly closing the dialog (e.g. with ESC or close button)
+        // rather than it being closed programmatically on success.
+        if (!isOpen) {
+          handleReset();
+        }
+      }}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Password Required</DialogTitle>
