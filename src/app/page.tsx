@@ -3,41 +3,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import HeroImage from "../../assets/image.png"
+
 
 export default async function Home() {
+  
+
   return (
     <>
-      <section className="w-full flex-1 flex items-center justify-center">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center space-y-8 text-center">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
-                Convert PDF Tables to Excel with AI. Securely.
-              </h1>
-              <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl">
-                Upload your PDF with accounting tables, and let our AI
-                instantly extract the data into a clean, editable Excel
-                spreadsheet. Your data is processed securely and is never
-                stored.
-              </p>
+      <main className="flex-1 flex items-center justify-center">
+        <section className="w-full">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="grid gap-6 lg:grid-cols-[1fr_550px] lg:gap-12 xl:grid-cols-[1fr_650px] items-center">
+              <div className="flex flex-col justify-center space-y-4 text-center lg:text-left">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
+                    Convert PDF Tables to Excel with AI. Securely.
+                  </h1>
+                  <p className="max-w-[600px] text-lg text-muted-foreground md:text-xl lg:mx-0">
+                    Upload your PDF with accounting tables, and let our AI
+                    instantly extract the data into a clean, editable Excel
+                    spreadsheet. Your data is processed securely and is never
+                    stored.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 min-[400px]:flex-row justify-center lg:justify-start">
+                  <Button asChild size="lg">
+                    <Link href="/convert">Get Started for Free</Link>
+                  </Button>
+                </div>
+              </div>
+              <Image
+                src={imageDataUri}
+                width="600"
+                height="400"
+                alt="An AI-generated image representing PDF to Excel conversion"
+                data-ai-hint="pdf excel"
+                className="mx-auto aspect-[3/2] overflow-hidden rounded-xl object-cover object-center w-full"
+              />
             </div>
-            <div className="flex flex-col gap-2 min-[400px]:flex-row justify-center">
-              <Button asChild size="lg">
-                <Link href="/convert">Get Started for Free</Link>
-              </Button>
-            </div>
-            <Image
-              src={HeroImage}
-              width="600"
-              height="400"
-              alt="An AI-generated image representing PDF to Excel conversion"
-              data-ai-hint="pdf excel"
-              className="mx-auto aspect-video overflow-hidden rounded-xl object-contain object-center sm:w-full max-w-3xl"
-            />
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
         <div className="container mx-auto px-4 md:px-6">
