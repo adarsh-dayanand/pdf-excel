@@ -3,11 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { generateImage } from "@/ai/flows/generate-image-flow";
 
-export default function Home() {
+export default async function Home() {
+  const { imageDataUri } = await generateImage({
+    prompt:
+      "A visually appealing and modern graphic representing the conversion of a PDF document into an Excel spreadsheet. The design should be clean, abstract, and easily understandable, featuring stylized icons for PDF and spreadsheets with an arrow indicating transformation. Use a soft, professional color palette that complements a tech application.",
+  });
+
   return (
     <>
-      <section className="w-full flex justify-center items-center pt-3">
+      <section className="w-full flex justify-center items-center pt-3 flex-1">
         <div className="container px-4">
           <div className="flex flex-col items-center space-y-8 text-center">
             <div className="space-y-4">
@@ -27,11 +33,11 @@ export default function Home() {
               </Button>
             </div>
             <Image
-              src="https://placehold.co/600x400.png"
+              src={imageDataUri}
               width="600"
               height="400"
-              alt="Hero"
-              data-ai-hint="spreadsheet analytics"
+              alt="An AI-generated image representing PDF to Excel conversion"
+              data-ai-hint="pdf excel"
               className="mx-auto aspect-video overflow-hidden rounded-xl object-contain object-center sm:w-full max-w-3xl"
             />
           </div>
