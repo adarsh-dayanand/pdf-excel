@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://excel-convert.ai";
+  const baseUrl = "https://pdf-excel.netlify.app";
 
   return [
     {
