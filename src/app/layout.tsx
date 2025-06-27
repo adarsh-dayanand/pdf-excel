@@ -4,9 +4,38 @@ import { AuthProvider } from "@/components/auth-provider";
 import { Header } from "@/components/header";
 import { Toaster } from "@/components/ui/toaster";
 
+const siteUrl = "https://excel-convert.ai";
+
 export const metadata: Metadata = {
-  title: "ExcelConvert",
-  description: "Convert PDF accounting tables to Excel with AI",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "ExcelConvert | Convert PDF Tables to Excel with AI",
+    template: `%s | ExcelConvert`,
+  },
+  description: "Instantly and securely convert PDF files with accounting tables into editable Excel spreadsheets using our advanced AI. Your data is processed securely and is never stored.",
+  keywords: ["PDF to Excel", "Convert PDF", "Accounting", "Data Extraction", "AI Converter", "Excel Spreadsheet", "PDF table extractor"],
+  openGraph: {
+    title: "ExcelConvert | AI-Powered PDF to Excel Converter",
+    description: "Effortlessly extract tables from your PDF documents and convert them to Excel. Secure, private, and powered by AI.",
+    url: siteUrl,
+    siteName: "ExcelConvert",
+    images: [
+      {
+        url: 'https://placehold.co/1200x630.png',
+        width: 1200,
+        height: 630,
+        alt: "ExcelConvert - PDF to Excel with AI",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ExcelConvert | AI-Powered PDF to Excel Converter",
+    description: "Instantly convert your PDF tables to Excel. Secure, fast, and accurate, powered by AI.",
+    images: ['https://placehold.co/1200x630.png'],
+  },
 };
 
 export default function RootLayout({

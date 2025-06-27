@@ -11,8 +11,6 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import Image1 from "@/assets/image.png";
-import Image2 from "@/assets/image2.png";
 
 
 export default function Home() {
@@ -45,20 +43,22 @@ export default function Home() {
                 <CarouselContent>
                   <CarouselItem>
                     <Image
-                      src={Image1}
+                      src="https://placehold.co/600x400.png"
                       width={600}
                       height={400}
                       alt="Screenshot of PDF to Excel conversion."
                       className="aspect-[3/2] w-full rounded-xl object-cover"
+                      data-ai-hint="pdf excel"
                     />
                   </CarouselItem>
                   <CarouselItem>
                     <Image
-                      src={Image2}
+                      src="https://placehold.co/600x400.png"
                       width={600}
                       height={400}
                       alt="Screenshot of secure data processing."
                       className="aspect-[3/2] w-full rounded-xl object-cover"
+                      data-ai-hint="secure data"
                     />
                   </CarouselItem>
                 </CarouselContent>
@@ -72,6 +72,12 @@ export default function Home() {
 
       <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
         <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Key Features</h2>
+              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Our AI-powered tool is designed for security, accuracy, and ease of use.
+              </p>
+          </div>
           <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3">
             <FeatureCard
               icon={<ShieldCheck className="w-10 h-10 text-primary" />}
@@ -114,7 +120,7 @@ function FeatureCard({
     <Card className="shadow-lg border-transparent hover:border-primary transition-colors h-full">
       <CardHeader className="flex flex-col items-center text-center pb-4">
         {icon}
-        <CardTitle className="mt-4 font-headline">{title}</CardTitle>
+        <h3 className="mt-4 text-2xl font-semibold leading-none tracking-tight font-headline">{title}</h3>
       </CardHeader>
       <CardContent className="text-center text-muted-foreground">
         <p>{description}</p>
