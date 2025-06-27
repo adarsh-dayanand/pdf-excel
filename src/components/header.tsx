@@ -24,24 +24,26 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <ExcelConvertLogo className="h-6 w-6 text-primary" />
-            <span className="font-bold font-headline sm:inline-block">
-              ExcelConvert
-            </span>
-          </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link
-              href="/convert"
-              className="transition-colors hover:text-primary"
-            >
-              Convert
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center space-x-2">
+              <ExcelConvertLogo className="h-6 w-6 text-primary" />
+              <span className="hidden font-bold font-headline sm:inline-block">
+                ExcelConvert
+              </span>
             </Link>
-          </nav>
-          <div className="flex flex-1 items-center justify-end space-x-4">
+            <nav className="flex items-center space-x-6 text-sm font-medium">
+              <Link
+                href="/convert"
+                className="transition-colors hover:text-primary"
+              >
+                Convert
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center justify-end space-x-4">
             {isLoading ? (
-               <div className="w-24 h-8 animate-pulse rounded-md bg-muted" />
+               <div className="h-9 w-9 animate-pulse rounded-full bg-muted sm:w-40 sm:rounded-md" />
             ) : isLoggedIn && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -78,9 +80,9 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button onClick={login}>
-                <LogIn className="mr-2 h-4 w-4" />
-                Login with Google
+              <Button onClick={login} size="sm">
+                <LogIn />
+                <span className="hidden sm:inline">Login with Google</span>
               </Button>
             )}
           </div>
