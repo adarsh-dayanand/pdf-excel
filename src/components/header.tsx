@@ -24,7 +24,7 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+        <div className="flex h-14 items-center">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center space-x-2">
               <ExcelConvertLogo className="h-6 w-6 text-primary" />
@@ -41,7 +41,7 @@ export function Header() {
               </Link>
             </nav>
           </div>
-          <div className="ml-auto flex items-center space-x-4">
+          <div className="ml-auto flex justify-end items-end space-x-4">
             {isLoading ? (
                <div className="h-9 w-9 animate-pulse rounded-full bg-muted sm:w-40 sm:rounded-md" />
             ) : isLoggedIn && user ? (

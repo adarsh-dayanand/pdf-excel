@@ -7,8 +7,8 @@ import Image from "next/image";
 export default function Home() {
   return (
     <>
-      <section className="w-full flex-1 flex items-center">
-        <div className="container px-4 md:px-6">
+      <section className="w-full flex justify-center items-center pt-3">
+        <div className="container px-4">
           <div className="flex flex-col items-center space-y-8 text-center">
             <div className="space-y-4">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
