@@ -12,6 +12,11 @@ import { DataTable } from "@/components/data-table";
 import { AlertCircle, FileUp, Loader2, Repeat, Sheet } from "lucide-react";
 import { PricingModal } from "@/components/pricing-modal";
 import { useAuth } from "@/components/auth-provider";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PDFDocument } from 'pdf-lib';
+
 
 type Step = "upload" | "loading" | "preview" | "error";
 
@@ -24,7 +29,11 @@ export function ConverterClient() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isPricingModalOpen, setPricingModalOpen] = useState(false);
   
-  const handleFileSelect = async (file: File) => {
+  const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pdfPassword, setPdfPassword] = useState("");
+
+  const extractData = async (file: File) => {
     setStep("loading");
     setFileName(file.name.replace(/\.[^/.]+$/, ""));
 
@@ -75,7 +84,93 @@ export function ConverterClient() {
       });
     };
   };
+
+  const handleFileSelect = async (file: File) => {
+    setStep("loading");
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onload = async () => {
+        try {
+            const arrayBuffer = reader.result as ArrayBuffer;
+            await PDFDocument.load(arrayBuffer);
+            // Not password protected, proceed normally
+            await extractData(file);
+        } catch (error: any) {
+            if (error.name === 'PDFInvalidPasswordError') {
+                // Password protected
+                setPendingFile(file);
+                setPasswordModalOpen(true);
+                setStep("upload"); // Go back to upload view, dialog will overlay
+            } else {
+                // Other error during PDF loading
+                const message = "Failed to load the PDF file. It might be corrupted.";
+                setErrorMessage(message);
+                setStep("error");
+                toast({
+                    title: "PDF Load Error",
+                    description: message,
+                    variant: "destructive",
+                });
+            }
+        }
+    }
+    reader.onerror = () => {
+        const message = "Failed to read the file.";
+        setErrorMessage(message);
+        setStep("error");
+        toast({
+            title: "File Read Error",
+            description: message,
+            variant: "destructive",
+        });
+    };
+  };
   
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingFile || !pdfPassword) return;
+
+    setPasswordModalOpen(false);
+    setStep("loading");
+
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(pendingFile);
+    reader.onload = async () => {
+        try {
+            const arrayBuffer = reader.result as ArrayBuffer;
+            const pdfDoc = await PDFDocument.load(arrayBuffer, { password: pdfPassword });
+            const pdfBytes = await pdfDoc.save();
+            const decryptedFile = new File([pdfBytes], pendingFile.name, { type: "application/pdf" });
+            
+            setPdfPassword("");
+            setPendingFile(null);
+            
+            await extractData(decryptedFile);
+        } catch (error: any) {
+            const message = "Invalid password or corrupted PDF. Please try again.";
+            setErrorMessage(message);
+            setStep("error");
+            toast({
+                title: "Decryption Failed",
+                description: message,
+                variant: "destructive",
+            });
+            setPdfPassword("");
+            setPendingFile(null);
+        }
+    };
+    reader.onerror = () => {
+        const message = "Failed to read the file during decryption.";
+        setErrorMessage(message);
+        setStep("error");
+        toast({
+            title: "File Read Error",
+            description: message,
+            variant: "destructive",
+        });
+    }
+  };
+
   const handleDownload = () => {
     try {
       const worksheet = XLSX.utils.json_to_sheet(extractedData);
@@ -93,6 +188,9 @@ export function ConverterClient() {
     setExtractedData([]);
     setFileName("");
     setErrorMessage("");
+    setPendingFile(null);
+    setPdfPassword("");
+    setPasswordModalOpen(false);
   };
   
   const uploadDescription = isLoggedIn
@@ -151,6 +249,28 @@ export function ConverterClient() {
         )}
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
+
+      <Dialog open={isPasswordModalOpen} onOpenChange={setPasswordModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Password Required</DialogTitle>
+                <DialogDescription>
+                    This PDF file is password protected. Please enter the password to continue.
+                </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handlePasswordSubmit}>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="password-input" className="text-right">Password</Label>
+                        <Input id="password-input" type="password" value={pdfPassword} onChange={(e) => setPdfPassword(e.target.value)} className="col-span-3" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button type="submit">Submit</Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
