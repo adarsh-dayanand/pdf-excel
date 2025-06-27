@@ -11,6 +11,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import Image1 from "@/assets/image.png";
+import Image2 from "@/assets/image2.png";
 
 
 export default function Home() {
@@ -43,21 +45,19 @@ export default function Home() {
                 <CarouselContent>
                   <CarouselItem>
                     <Image
-                      src="https://placehold.co/600x400.png"
+                      src={Image1}
                       width={600}
                       height={400}
-                      alt="Carousel Image 1: PDF to Excel conversion concept"
-                      data-ai-hint="pdf excel"
+                      alt="Screenshot of PDF to Excel conversion."
                       className="aspect-[3/2] w-full rounded-xl object-cover"
                     />
                   </CarouselItem>
                   <CarouselItem>
                     <Image
-                      src="https://placehold.co/600x400.png"
+                      src={Image2}
                       width={600}
                       height={400}
-                      alt="Carousel Image 2: Secure data processing"
-                      data-ai-hint="secure data"
+                      alt="Screenshot of secure data processing."
                       className="aspect-[3/2] w-full rounded-xl object-cover"
                     />
                   </CarouselItem>
