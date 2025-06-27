@@ -11,7 +11,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-
+import HeroImage1 from "../assets/image.png";
+import HeroImage2 from "../assets/image2.png";
 
 export default function Home() {
   
@@ -43,7 +44,7 @@ export default function Home() {
                 <CarouselContent>
                   <CarouselItem>
                     <Image
-                      src="/carousel-1.png"
+                      src={HeroImage1}
                       width={600}
                       height={400}
                       alt="Screenshot of PDF to Excel conversion."
@@ -52,7 +53,7 @@ export default function Home() {
                   </CarouselItem>
                   <CarouselItem>
                     <Image
-                      src="/carousel-2.png"
+                      src={HeroImage2}
                       width={600}
                       height={400}
                       alt="Screenshot of secure data processing."
