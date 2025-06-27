@@ -31,7 +31,7 @@ export function FileUploader({ onFileSelect }: FileUploaderProps) {
     <div
       {...getRootProps()}
       className={cn(
-        "flex flex-col items-center justify-center w-full h-64 p-5 text-center border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+        "flex flex-col items-center justify-center w-full h-48 sm:h-64 p-5 text-center border-2 border-dashed rounded-lg cursor-pointer transition-colors",
         isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
       )}
     >

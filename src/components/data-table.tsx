@@ -38,7 +38,7 @@ export function DataTable({ data, onDataChange }: DataTableProps) {
         <TableHeader className="sticky top-0 bg-secondary">
           <TableRow>
             {headers.map((header) => (
-              <TableHead key={header} className="font-bold">
+              <TableHead key={header} className="font-bold px-2">
                 {header}
               </TableHead>
             ))}
@@ -48,14 +48,13 @@ export function DataTable({ data, onDataChange }: DataTableProps) {
           {data.map((row, rowIndex) => (
             <TableRow key={rowIndex}>
               {headers.map((header) => (
-                <TableCell key={`${rowIndex}-${header}`}>
+                <TableCell key={`${rowIndex}-${header}`} className="p-2">
                   <Input
                     type="text"
                     value={row[header]}
                     onChange={(e) =>
                       handleInputChange(rowIndex, header, e.target.value)
                     }
-                    className="h-8"
                   />
                 </TableCell>
               ))}

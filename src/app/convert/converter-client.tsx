@@ -133,7 +133,7 @@ export function ConverterClient() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <DataTable data={extractedData} onDataChange={setExtractedData} />
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-col sm:flex-row justify-end gap-2">
                         <Button variant="outline" onClick={handleReset}><Repeat className="mr-2 h-4 w-4" /> Start Over</Button>
                         <Button onClick={handleDownload}>Download Excel</Button>
                     </div>

@@ -7,11 +7,11 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">
-        <section className="w-full py-20 md:py-32 lg:py-40 xl:py-48">
+        <section className="w-full py-20 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="flex flex-col items-center space-y-6 text-center">
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none font-headline">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
                   Convert PDF Tables to Excel with AI. Securely.
                 </h1>
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
@@ -32,7 +32,7 @@ export default function Home() {
 
         <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
           <div className="container px-4 md:px-6">
-            <div className="grid items-center gap-6 lg:grid-cols-3 lg:gap-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-start gap-8">
               <FeatureCard
                 icon={<ShieldCheck className="w-10 h-10 text-primary" />}
                 title="Secure & Private"
@@ -72,7 +72,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <Card className="shadow-lg border-transparent hover:border-primary transition-colors">
+    <Card className="shadow-lg border-transparent hover:border-primary transition-colors h-full">
       <CardHeader className="flex flex-col items-center text-center pb-4">
         {icon}
         <CardTitle className="mt-4 font-headline">{title}</CardTitle>
