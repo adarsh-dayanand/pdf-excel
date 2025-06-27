@@ -58,7 +58,7 @@ export function ConverterClient() {
     return `data:${type};base64,${base64}`;
   };
   
-  const startExtraction = async (pdfBuffer: ArrayBuffer, fileType: string, originalFileName: string) => {
+  const startExtraction = async (pdfBuffer: ArrayBuffer, fileType: string) => {
     setStep("loading");
     
     try {
@@ -108,7 +108,7 @@ export function ConverterClient() {
       await PDFDocument.load(buffer);
 
       // If successful, it's not encrypted. Proceed.
-      await startExtraction(buffer, file.type, file.name);
+      await startExtraction(buffer, file.type);
 
     } catch (e: any) {
       if (e.name === 'PDFEncryptedPDFError') {
@@ -140,7 +140,7 @@ export function ConverterClient() {
       
       // Close modal and start processing with the unencrypted data
       setPasswordModalOpen(false); 
-      await startExtraction(unencryptedBytes.buffer, fileState.type, fileState.name);
+      await startExtraction(unencryptedBytes.buffer, fileState.type);
 
     } catch (e: any) {
       if (e.name === 'PDFInvalidPasswordError') {
@@ -235,12 +235,7 @@ export function ConverterClient() {
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
-      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          // If modal is closed without submitting (e.g., ESC), reset everything
-          handleReset();
-        }
-      }}>
+      <Dialog open={isPasswordModalOpen} onOpenChange={setPasswordModalOpen}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Password Required</DialogTitle>
