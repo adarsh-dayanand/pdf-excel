@@ -33,45 +33,48 @@ export function ConverterClient() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pdfPassword, setPdfPassword] = useState("");
 
-  const extractData = async (file: File) => {
-    setStep("loading");
-    setFileName(file.name.replace(/\.[^/.]+$/, ""));
+  const handleExtractionLogic = async (pdfDataUri: string, originalFileName: string) => {
+    setFileName(originalFileName.replace(/\.[^/.]+$/, ""));
 
+    try {
+      const result = await extractTabularData({ pdfDataUri, isLoggedIn });
+      
+      if (!result.tabularData || result.tabularData.trim() === '[]' || result.tabularData.trim() === '{}') {
+          throw new Error("No tabular data found in the PDF. Please try another file.");
+      }
+      
+      const parsedData = JSON.parse(result.tabularData);
+      if (!Array.isArray(parsedData) || parsedData.length === 0) {
+          throw new Error("Extracted data is not in a valid table format. Please check the PDF.");
+      }
+
+      setExtractedData(parsedData);
+      setStep("preview");
+      toast({
+        title: "Extraction Successful!",
+        description: "Your data has been extracted. You can now preview and edit it.",
+      });
+    } catch (error: any) {
+      const message = error.message || "An unexpected error occurred during extraction.";
+      if (message.includes("exceeded the limit")) {
+        setPricingModalOpen(true);
+      }
+      setErrorMessage(message);
+      setStep("error");
+      toast({
+        title: "Extraction Failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startExtractionWithFile = async (file: File) => {
+    setStep("loading");
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
-      try {
-        const pdfDataUri = reader.result as string;
-        const result = await extractTabularData({ pdfDataUri, isLoggedIn });
-        
-        if (!result.tabularData || result.tabularData.trim() === '[]' || result.tabularData.trim() === '{}') {
-           throw new Error("No tabular data found in the PDF. Please try another file.");
-        }
-        
-        const parsedData = JSON.parse(result.tabularData);
-        if (!Array.isArray(parsedData) || parsedData.length === 0) {
-           throw new Error("Extracted data is not in a valid table format. Please check the PDF.");
-        }
-
-        setExtractedData(parsedData);
-        setStep("preview");
-        toast({
-          title: "Extraction Successful!",
-          description: "Your data has been extracted. You can now preview and edit it.",
-        });
-      } catch (error: any) {
-        const message = error.message || "An unexpected error occurred during extraction.";
-        if (message.includes("exceeded the limit")) {
-          setPricingModalOpen(true);
-        }
-        setErrorMessage(message);
-        setStep("error");
-        toast({
-          title: "Extraction Failed",
-          description: message,
-          variant: "destructive",
-        });
-      }
+      await handleExtractionLogic(reader.result as string, file.name);
     };
     reader.onerror = () => {
       const message = "Failed to read the file.";
@@ -86,7 +89,6 @@ export function ConverterClient() {
   };
 
   const handleFileSelect = async (file: File) => {
-    setStep("loading");
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
     reader.onload = async () => {
@@ -94,13 +96,12 @@ export function ConverterClient() {
             const arrayBuffer = reader.result as ArrayBuffer;
             await PDFDocument.load(arrayBuffer);
             // Not password protected, proceed normally
-            await extractData(file);
+            await startExtractionWithFile(file);
         } catch (error: any) {
             if (error.name === 'PDFInvalidPasswordError') {
                 // Password protected
                 setPendingFile(file);
                 setPasswordModalOpen(true);
-                setStep("upload"); // Go back to upload view, dialog will overlay
             } else {
                 // Other error during PDF loading
                 const message = "Failed to load the PDF file. It might be corrupted.";
@@ -140,17 +141,17 @@ export function ConverterClient() {
         try {
             const arrayBuffer = reader.result as ArrayBuffer;
             const pdfDoc = await PDFDocument.load(arrayBuffer, { password: pdfPassword });
-            const pdfBytes = await pdfDoc.save();
-            const decryptedFile = new File([pdfBytes], fileToProcess.name, { type: "application/pdf" });
+            
+            // Directly save to a base64 data URI
+            const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
             
             setPdfPassword("");
             setPendingFile(null);
             
-            await extractData(decryptedFile);
+            await handleExtractionLogic(pdfDataUri, fileToProcess.name);
         } catch (error: any) {
+            setStep("upload"); // Go back to upload view before showing dialog
             if (error.name === 'PDFInvalidPasswordError') {
-                // Re-prompt for password
-                setStep("upload");
                 setPasswordModalOpen(true);
                 setPdfPassword(""); // Clear wrong password
                  toast({
@@ -159,7 +160,6 @@ export function ConverterClient() {
                     variant: "destructive",
                 });
             } else {
-                // A more serious error
                 const message = "Failed to process the PDF. It might be corrupted.";
                 setErrorMessage(message);
                 setStep("error");
@@ -169,7 +169,7 @@ export function ConverterClient() {
                     variant: "destructive",
                 });
                 setPdfPassword("");
-                setPendingFile(null); // Clear state on hard error
+                setPendingFile(null);
             }
         }
     };
