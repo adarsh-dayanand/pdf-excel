@@ -147,16 +147,29 @@ export function ConverterClient() {
             
             await extractData(decryptedFile);
         } catch (error: any) {
-            const message = "Invalid password or corrupted PDF. Please try again.";
-            setErrorMessage(message);
-            setStep("error");
-            toast({
-                title: "Decryption Failed",
-                description: message,
-                variant: "destructive",
-            });
-            setPdfPassword("");
-            setPendingFile(null);
+            if (error.name === 'PDFInvalidPasswordError') {
+                // Re-prompt for password
+                setStep("upload");
+                setPasswordModalOpen(true);
+                setPdfPassword(""); // Clear wrong password
+                 toast({
+                    title: "Invalid Password",
+                    description: "The password was incorrect. Please try again.",
+                    variant: "destructive",
+                });
+            } else {
+                // A more serious error
+                const message = "Failed to process the PDF. It might be corrupted.";
+                setErrorMessage(message);
+                setStep("error");
+                toast({
+                    title: "Decryption Failed",
+                    description: message,
+                    variant: "destructive",
+                });
+                setPdfPassword("");
+                setPendingFile(null); // Clear state on hard error
+            }
         }
     };
     reader.onerror = () => {
@@ -250,7 +263,7 @@ export function ConverterClient() {
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
-      <Dialog open={isPasswordModalOpen} onOpenChange={setPasswordModalOpen}>
+      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => { if (!isOpen) handleReset(); setPasswordModalOpen(isOpen); }}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Password Required</DialogTitle>
@@ -262,7 +275,7 @@ export function ConverterClient() {
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="password-input" className="text-right">Password</Label>
-                        <Input id="password-input" type="password" value={pdfPassword} onChange={(e) => setPdfPassword(e.target.value)} className="col-span-3" />
+                        <Input id="password-input" type="password" value={pdfPassword} onChange={(e) => setPdfPassword(e.target.value)} className="col-span-3" autoFocus />
                     </div>
                 </div>
                 <DialogFooter>
