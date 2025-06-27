@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -91,7 +90,8 @@ export function ConverterClient() {
         if (!password) {
             setStep("loading");
         }
-        const pdfDoc = await PDFDocument.load(buffer, { password });
+        // The password option is valid for pdf-lib, but we cast to any to bypass a potential TS definition issue.
+        const pdfDoc = await PDFDocument.load(buffer, { password } as any);
         const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
         
         setPasswordModalOpen(false);
