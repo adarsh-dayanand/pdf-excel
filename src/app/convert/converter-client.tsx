@@ -2,7 +2,9 @@
 
 import { useState, useCallback, FormEvent } from "react";
 import * as XLSX from "xlsx";
-import { PDFDocument } from "pdf-lib";
+import * as pdfjs from "pdfjs-dist";
+import type { PDFDocumentProxy, TextItem } from "pdfjs-dist/types/src/display/api";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -16,11 +18,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+// Set up the worker
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `//cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+}
+
 type Step = "upload" | "loading" | "preview" | "error";
 
 type FileState = {
   name: string;
-  type: string;
   buffer: ArrayBuffer;
 } | null;
 
@@ -47,28 +53,18 @@ export function ConverterClient() {
     setIsProcessing(false);
   }, []);
 
-  const convertBufferToDataUri = (buffer: ArrayBuffer, type: string): string => {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = window.btoa(binary);
-    return `data:${type};base64,${base64}`;
-  };
-
-  const startExtraction = async (pdfBuffer: ArrayBuffer, fileType: string) => {
+  const startAIExtraction = async (textContent: string) => {
     try {
-      const pdfDataUri = convertBufferToDataUri(pdfBuffer, fileType);
-      const result = await extractTabularData({ pdfDataUri, isLoggedIn });
+      setStep("loading");
+      const result = await extractTabularData({ textContent, isLoggedIn });
       
       if (!result.tabularData || result.tabularData.trim() === '[]' || result.tabularData.trim() === '{}') {
-          throw new Error("No tabular data found in the PDF. Please try another file.");
+          throw new Error("No tabular data found in the document. Please try another file.");
       }
       
       const parsedData = JSON.parse(result.tabularData);
       if (!Array.isArray(parsedData) || parsedData.length === 0) {
-          throw new Error("Extracted data is not in a valid table format. Please check the PDF.");
+          throw new Error("Extracted data is not in a valid table format. Please check the document.");
       }
 
       setExtractedData(parsedData);
@@ -91,51 +87,62 @@ export function ConverterClient() {
         description: message,
         variant: "destructive",
       });
+    } finally {
+        setIsProcessing(false);
     }
   };
 
   const processPdf = useCallback(async (buffer: ArrayBuffer, password?: string) => {
-    if (!fileState) return;
-    
     setIsProcessing(true);
     setStep("loading");
 
     try {
-      const pdfDoc = await PDFDocument.load(buffer, { password });
-      const unencryptedBytes = await pdfDoc.save();
+      const loadingTask = pdfjs.getDocument({ data: buffer, password });
+      const pdf: PDFDocumentProxy = await loadingTask.promise;
       
       setPasswordModalOpen(false);
-      await startExtraction(unencryptedBytes.buffer, fileState.type);
 
-    } catch (e: any) {
-      if (e.name === 'PDFEncryptedPDFError') {
-        setStep("upload"); 
+      let fullText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => ('str' in item ? item.str : '')).join(' ');
+        fullText += pageText + "\n\n";
+      }
+
+      if (!fullText.trim()) {
+        throw new Error("Could not extract any text from the PDF. It may be an image-only file.");
+      }
+      
+      await startAIExtraction(fullText);
+
+    } catch (error: any) {
+      setIsProcessing(false);
+      if (error.name === 'PasswordException') {
+        if (password) {
+            toast({
+              title: "Invalid Password",
+              description: "The password was incorrect. Please try again.",
+              variant: "destructive",
+            });
+            setPdfPassword("");
+        }
+        setStep("upload");
         setPasswordModalOpen(true);
-      } else if (e.name === 'PDFInvalidPasswordError') {
-        toast({
-          title: "Invalid Password",
-          description: "The password was incorrect. Please try again.",
-          variant: "destructive",
-        });
-        setPdfPassword("");
-        setStep("upload"); 
-        setPasswordModalOpen(true); 
       } else {
-        const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
+        const message = error.message || "Failed to load the PDF. It might be corrupted or in an unsupported format.";
         setErrorMessage(message);
         setStep("error");
         toast({ title: "PDF Load Error", description: message, variant: "destructive" });
       }
-    } finally {
-        setIsProcessing(false);
     }
-  }, [fileState, isLoggedIn, toast]);
+  }, [isLoggedIn, toast]);
 
   const handleFileSelect = async (file: File) => {
     handleReset();
     
     const buffer = await file.arrayBuffer();
-    setFileState({ name: file.name, type: file.type, buffer });
+    setFileState({ name: file.name, buffer });
     
     await processPdf(buffer);
   };
@@ -184,7 +191,7 @@ export function ConverterClient() {
             <div className="flex flex-col items-center justify-center gap-4 p-10 border-2 border-dashed rounded-lg">
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
                 <h3 className="text-xl font-semibold">
-                  {step === 'loading' ? 'Extracting Data...' : 'Processing...'}
+                  {step === 'loading' ? 'Processing Document...' : 'Processing...'}
                 </h3>
                 <p className="text-muted-foreground">This may take a moment.</p>
             </div>

@@ -1,12 +1,9 @@
-
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for extracting tabular data from a PDF.
+ * @fileOverview This file defines a Genkit flow for extracting tabular data from text content.
  *
- * It takes a PDF data URI as input and returns a JSON string representing the extracted tabular data.
- * @fileOverview This file defines a Genkit flow for extracting tabular data from a PDF.
- *
+ * It takes a string of text extracted from a document as input and returns a JSON string representing the extracted tabular data.
  * - extractTabularData - A function that handles the tabular data extraction process.
  * - ExtractTabularDataInput - The input type for the extractTabularData function.
  * - ExtractTabularDataOutput - The return type for the extractTabularData function.
@@ -18,10 +15,10 @@ import { headers } from 'next/headers';
 import { checkRateLimit, recordUsage } from '@/lib/rate-limiter';
 
 const ExtractTabularDataInputSchema = z.object({
-  pdfDataUri: z
+  textContent: z
     .string()
     .describe(
-      'A PDF file as a data URI that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.' // prettier-ignore
+      'The full text content extracted from a document.'
     ),
   isLoggedIn: z.boolean(),
 });
@@ -57,12 +54,12 @@ const extractTabularDataPrompt = ai.definePrompt({
   name: 'extractTabularDataPrompt',
   input: {schema: ExtractTabularDataInputSchema},
   output: {schema: ExtractTabularDataOutputSchema},
-  prompt: `You are an expert system for extracting accounting tables from PDF documents.
+  prompt: `You are an expert system for extracting accounting tables from the text content of a document.
 
-  Given the following PDF document, extract all tabular data and return it as a JSON string.
+  Given the following text, extract all tabular data and return it as a JSON string. Ensure the JSON is well-formed.
 
-  Here is the PDF document:
-  {{media url=pdfDataUri}}
+  Here is the text content:
+  {{{textContent}}}
   `,
 });
 
