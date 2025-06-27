@@ -2,20 +2,18 @@
 
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { extractTabularData } from "@/ai/flows/extract-tabular-data";
 import { FileUploader } from "@/components/file-uploader";
 import { DataTable } from "@/components/data-table";
-import { AlertCircle, FileUp, Loader2, LogIn, Repeat, Sheet } from "lucide-react";
+import { AlertCircle, FileUp, Loader2, Repeat, Sheet } from "lucide-react";
 import { PricingModal } from "@/components/pricing-modal";
 
 type Step = "upload" | "loading" | "preview" | "error";
 
 export function ConverterClient() {
-  const { isLoggedIn, login } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("upload");
   const [extractedData, setExtractedData] = useState<any[]>([]);
@@ -103,23 +101,6 @@ export function ConverterClient() {
     setFileName("");
     setErrorMessage("");
   };
-
-  if (!isLoggedIn) {
-    return (
-      <Card className="w-full max-w-lg mx-auto mt-10 text-center">
-        <CardHeader>
-          <CardTitle>Please Log In</CardTitle>
-          <CardDescription>You need to be logged in to use the converter.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={login}>
-            <LogIn className="mr-2 h-4 w-4" />
-            Login with Google
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <>
