@@ -4,6 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 
 export default function Home() {
@@ -32,14 +39,32 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-              <Image
-                src="https://placehold.co/600x400.png"
-                width="600"
-                height="400"
-                alt="A visually appealing graphic representing the conversion of a PDF document into an Excel spreadsheet."
-                data-ai-hint="pdf excel conversion"
-                className="mx-auto aspect-[3/2] overflow-hidden rounded-xl object-cover object-center w-full"
-              />
+              <Carousel className="w-full max-w-lg mx-auto">
+                <CarouselContent>
+                  <CarouselItem>
+                    <Image
+                      src="https://placehold.co/600x400.png"
+                      width={600}
+                      height={400}
+                      alt="Carousel Image 1: PDF to Excel conversion concept"
+                      data-ai-hint="pdf excel"
+                      className="aspect-[3/2] w-full rounded-xl object-cover"
+                    />
+                  </CarouselItem>
+                  <CarouselItem>
+                    <Image
+                      src="https://placehold.co/600x400.png"
+                      width={600}
+                      height={400}
+                      alt="Carousel Image 2: Secure data processing"
+                      data-ai-hint="secure data"
+                      className="aspect-[3/2] w-full rounded-xl object-cover"
+                    />
+                  </CarouselItem>
+                </CarouselContent>
+                <CarouselPrevious className="hidden sm:flex -left-8" />
+                <CarouselNext className="hidden sm:flex -right-8" />
+              </Carousel>
             </div>
           </div>
         </section>
