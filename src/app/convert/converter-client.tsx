@@ -58,13 +58,10 @@ export function ConverterClient() {
       setStep("loading");
       const result = await extractTabularData({ textContent, isLoggedIn });
       
-      if (!result.tabularData || result.tabularData.trim() === '[]' || result.tabularData.trim() === '{}') {
-          throw new Error("No tabular data found in the document. Please try another file.");
-      }
-      
-      const parsedData = JSON.parse(result.tabularData);
-      if (!Array.isArray(parsedData) || parsedData.length === 0) {
-          throw new Error("Extracted data is not in a valid table format. Please check the document.");
+      const parsedData = result.tabularData;
+
+      if (!parsedData || !Array.isArray(parsedData) || parsedData.length === 0) {
+          throw new Error("No tabular data found in the document. The AI could not identify any tables. Please try another file.");
       }
 
       setExtractedData(parsedData);
@@ -138,7 +135,7 @@ export function ConverterClient() {
         toast({ title: "PDF Load Error", description: message, variant: "destructive" });
       }
     }
-  }, [isLoggedIn, toast]);
+  }, [isLoggedIn, toast, handleReset]);
 
   const handleFileSelect = async (file: File) => {
     handleReset();

@@ -3,7 +3,7 @@
 /**
  * @fileOverview This file defines a Genkit flow for extracting tabular data from text content.
  *
- * It takes a string of text extracted from a document as input and returns a JSON string representing the extracted tabular data.
+ * It takes a string of text extracted from a document as input and returns a structured array of objects representing the tabular data.
  * - extractTabularData - A function that handles the tabular data extraction process.
  * - ExtractTabularDataInput - The input type for the extractTabularData function.
  * - ExtractTabularDataOutput - The return type for the extractTabularData function.
@@ -26,8 +26,8 @@ export type ExtractTabularDataInput = z.infer<typeof ExtractTabularDataInputSche
 
 const ExtractTabularDataOutputSchema = z.object({
   tabularData: z
-    .string()
-    .describe('A JSON string representing the extracted tabular data.'),
+    .array(z.record(z.string()))
+    .describe('An array of objects representing the extracted tabular data. Each object is a row, and each key-value pair is a column name and its corresponding value.'),
 });
 export type ExtractTabularDataOutput = z.infer<typeof ExtractTabularDataOutputSchema>;
 
@@ -56,7 +56,7 @@ const extractTabularDataPrompt = ai.definePrompt({
   output: {schema: ExtractTabularDataOutputSchema},
   prompt: `You are an expert system for extracting accounting tables from the text content of a document.
 
-  Given the following text, extract all tabular data and return it as a JSON string. Ensure the JSON is well-formed.
+  Given the following text, extract all tabular data and return it as a structured JSON object.
 
   Here is the text content:
   {{{textContent}}}
@@ -71,6 +71,10 @@ const extractTabularDataFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await extractTabularDataPrompt(input);
-    return output!;
+    if (!output) {
+      // This case should be rare with structured output but it's good practice to handle it.
+      return { tabularData: [] };
+    }
+    return output;
   }
 );
