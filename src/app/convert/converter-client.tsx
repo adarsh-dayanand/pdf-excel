@@ -19,6 +19,8 @@ import { PDFDocument } from 'pdf-lib';
 
 
 type Step = "upload" | "loading" | "preview" | "error";
+type PdfState = { file: File; buffer: ArrayBuffer } | null;
+
 
 export function ConverterClient() {
   const { toast } = useToast();
@@ -29,8 +31,8 @@ export function ConverterClient() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isPricingModalOpen, setPricingModalOpen] = useState(false);
   
+  const [pdfState, setPdfState] = useState<PdfState>(null);
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pdfPassword, setPdfPassword] = useState("");
   const [isDecrypting, setIsDecrypting] = useState(false);
 
@@ -39,7 +41,7 @@ export function ConverterClient() {
     setExtractedData([]);
     setFileName("");
     setErrorMessage("");
-    setPendingFile(null);
+    setPdfState(null);
     setPdfPassword("");
     setPasswordModalOpen(false);
     setIsDecrypting(false);
@@ -79,74 +81,72 @@ export function ConverterClient() {
         description: message,
         variant: "destructive",
       });
+    } finally {
+        setPdfState(null);
     }
   };
 
-  const handleFileSelect = async (file: File) => {
-    setStep("loading");
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdfDoc = await PDFDocument.load(arrayBuffer);
-        const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
-        await handleExtractionLogic(pdfDataUri, file.name);
-    } catch (error: any) {
-        if (error.name === 'PDFInvalidPasswordError') {
-            setStep("upload");
-            setPendingFile(file);
-            setPasswordModalOpen(true);
-        } else {
-            const message = "Failed to load the PDF. It might be corrupted.";
-            setErrorMessage(message);
-            setStep("error");
-            toast({
-                title: "PDF Load Error",
-                description: message,
-                variant: "destructive",
-            });
+  const attemptPdfLoad = async (buffer: ArrayBuffer, file: File, password?: string) => {
+      try {
+        if (!password) {
+            setStep("loading");
         }
+        const pdfDoc = await PDFDocument.load(buffer, { password });
+        const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
+        
+        setPasswordModalOpen(false);
+        setPdfPassword('');
+        setIsDecrypting(false);
+        await handleExtractionLogic(pdfDataUri, file.name);
+
+      } catch (error: any) {
+          setIsDecrypting(false);
+          if (error.name === 'PDFInvalidPasswordError') {
+              if (password) {
+                  toast({
+                      title: "Invalid Password",
+                      description: "The password was incorrect. Please try again.",
+                      variant: "destructive",
+                  });
+                  setPdfPassword("");
+              } else {
+                  setStep("upload");
+                  setPasswordModalOpen(true);
+              }
+          } else {
+              handleReset();
+              const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
+              setErrorMessage(message);
+              setStep("error");
+              toast({
+                  title: "PDF Load Error",
+                  description: message,
+                  variant: "destructive",
+              });
+          }
+      }
+  };
+
+  const handleFileSelect = async (file: File) => {
+    try {
+        const buffer = await file.arrayBuffer();
+        setPdfState({ file, buffer });
+        await attemptPdfLoad(buffer, file);
+    } catch (e) {
+        handleReset();
+        const message = "Could not read the selected file.";
+        setErrorMessage(message);
+        setStep("error");
+        toast({ title: "File Read Error", description: message, variant: "destructive" });
     }
   };
   
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const fileToProcess = pendingFile;
-    if (!fileToProcess || !pdfPassword || isDecrypting) return;
+    if (!pdfState || !pdfPassword || isDecrypting) return;
 
     setIsDecrypting(true);
-
-    try {
-        const arrayBuffer = await fileToProcess.arrayBuffer();
-        const pdfDoc = await PDFDocument.load(arrayBuffer, { password: pdfPassword });
-        const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
-        
-        setPasswordModalOpen(false);
-        setPendingFile(null);
-        setPdfPassword('');
-
-        await handleExtractionLogic(pdfDataUri, fileToProcess.name);
-
-    } catch (error: any) {
-        if (error.name === 'PDFInvalidPasswordError') {
-            setPdfPassword(""); 
-            toast({
-                title: "Invalid Password",
-                description: "The password was incorrect. Please try again.",
-                variant: "destructive",
-            });
-        } else {
-            const message = "Failed to process the PDF. It might be corrupted.";
-            setErrorMessage(message);
-            setStep("error");
-            setPasswordModalOpen(false);
-            toast({
-                title: "Decryption Failed",
-                description: message,
-                variant: "destructive",
-            });
-        }
-    } finally {
-       setIsDecrypting(false);
-    }
+    await attemptPdfLoad(pdfState.buffer, pdfState.file, pdfPassword);
   };
 
   const handleDownload = () => {
@@ -218,7 +218,7 @@ export function ConverterClient() {
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
-      <Dialog open={isPasswordModalOpen} onOpenChange={setPasswordModalOpen}>
+      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => { if (!isOpen) handleReset(); else setPasswordModalOpen(true); }}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Password Required</DialogTitle>
