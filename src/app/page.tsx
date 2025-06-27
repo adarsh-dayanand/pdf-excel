@@ -3,11 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDown, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { generateImage } from "@/ai/flows/generate-image-flow";
+import HeroImage from "../../assets/image.png"
 
 export default async function Home() {
-  const { imageDataUri } = await generateImage({ prompt: 'An image showing a PDF document icon transforming into an Excel spreadsheet icon, with binary code and arrows indicating the conversion process. The style should be modern and clean, with a tech-inspired aesthetic.' });
-
   return (
     <>
       <section className="w-full flex-1 flex items-center justify-center">
@@ -30,7 +28,7 @@ export default async function Home() {
               </Button>
             </div>
             <Image
-              src={imageDataUri}
+              src={HeroImage}
               width="600"
               height="400"
               alt="An AI-generated image representing PDF to Excel conversion"
