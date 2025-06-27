@@ -97,7 +97,9 @@ export function ConverterClient() {
     setStep("loading");
 
     try {
-      const loadingTask = pdfjs.getDocument({ data: buffer, password });
+      // By cloning the ArrayBuffer, we prevent it from being detached in the parent scope.
+      // This is crucial for password-protected files where we might need to retry.
+      const loadingTask = pdfjs.getDocument({ data: buffer.slice(0), password });
       const pdf: PDFDocumentProxy = await loadingTask.promise;
       
       setPasswordModalOpen(false);
