@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import * as XLSX from "xlsx";
 import { PDFDocument } from "pdf-lib";
 import { Button } from "@/components/ui/button";
@@ -18,41 +18,36 @@ import { Label } from "@/components/ui/label";
 
 type Step = "upload" | "loading" | "preview" | "error";
 
-// Keep track of the file and its raw data buffer
-type PdfFileState = {
-  file: File;
+type FileState = {
+  name: string;
+  type: string;
   buffer: ArrayBuffer;
 } | null;
-
 
 export function ConverterClient() {
   const { toast } = useToast();
   const { isLoggedIn } = useAuth();
   const [step, setStep] = useState<Step>("upload");
   const [extractedData, setExtractedData] = useState<any[]>([]);
-  const [fileName, setFileName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isPricingModalOpen, setPricingModalOpen] = useState(false);
+
+  const [fileState, setFileState] = useState<FileState>(null);
   
-  // State for the PDF file being processed
-  const [pdfFileState, setPdfFileState] = useState<PdfFileState>(null);
-  
-  // State for the password modal
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
   const [pdfPassword, setPdfPassword] = useState("");
   const [isDecrypting, setIsDecrypting] = useState(false);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setStep("upload");
     setExtractedData([]);
-    setFileName("");
     setErrorMessage("");
-    setPdfFileState(null);
+    setFileState(null);
     setPasswordModalOpen(false);
     setPdfPassword("");
     setIsDecrypting(false);
-  };
-
+  }, []);
+  
   const convertBufferToDataUri = (buffer: ArrayBuffer, type: string): string => {
     const bytes = new Uint8Array(buffer);
     let binary = '';
@@ -63,11 +58,11 @@ export function ConverterClient() {
     return `data:${type};base64,${base64}`;
   };
   
-  const processAndExtract = async (pdfDataUri: string, originalFileName: string) => {
+  const startExtraction = async (pdfBuffer: ArrayBuffer, fileType: string, originalFileName: string) => {
     setStep("loading");
-    setFileName(originalFileName.replace(/\.[^/.]+$/, ""));
-
+    
     try {
+      const pdfDataUri = convertBufferToDataUri(pdfBuffer, fileType);
       const result = await extractTabularData({ pdfDataUri, isLoggedIn });
       
       if (!result.tabularData || result.tabularData.trim() === '[]' || result.tabularData.trim() === '{}') {
@@ -99,9 +94,6 @@ export function ConverterClient() {
         description: message,
         variant: "destructive",
       });
-    } finally {
-      setIsDecrypting(false);
-      setPasswordModalOpen(false);
     }
   };
 
@@ -110,22 +102,19 @@ export function ConverterClient() {
     
     try {
       const buffer = await file.arrayBuffer();
-      // Keep a reference to the uploaded file's data
-      setPdfFileState({ file, buffer });
-
-      // Attempt to load the PDF. This will throw an error if it's encrypted.
-      await PDFDocument.load(buffer);
+      setFileState({ name: file.name, type: file.type, buffer });
       
-      // If no error, it's not encrypted. Proceed.
-      const pdfDataUri = convertBufferToDataUri(buffer, file.type);
-      await processAndExtract(pdfDataUri, file.name);
+      // Attempt to load. This will throw an error if encrypted.
+      await PDFDocument.load(buffer);
+
+      // If successful, it's not encrypted. Proceed.
+      await startExtraction(buffer, file.type, file.name);
 
     } catch (e: any) {
       if (e.name === 'PDFEncryptedPDFError') {
         // PDF is password-protected, open the modal.
         setPasswordModalOpen(true);
       } else {
-        // Another error occurred (e.g., corrupted file)
         const message = "Failed to load the PDF. It might be corrupted or in an unsupported format.";
         setErrorMessage(message);
         setStep("error");
@@ -136,23 +125,22 @@ export function ConverterClient() {
   
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pdfFileState || !pdfPassword) return;
+    if (!fileState || !pdfPassword) return;
 
     setIsDecrypting(true);
 
     try {
       // Attempt to decrypt with the provided password
-      const pdfDoc = await PDFDocument.load(pdfFileState.buffer, {
+      const pdfDoc = await PDFDocument.load(fileState.buffer, {
         password: pdfPassword,
       });
 
-      // Decryption successful. Save the unencrypted document.
+      // Decryption successful. Save the unencrypted document bytes.
       const unencryptedBytes = await pdfDoc.save();
-      const pdfDataUri = convertBufferToDataUri(unencryptedBytes.buffer, pdfFileState.file.type);
       
-      // Close the modal and start processing
+      // Close modal and start processing with the unencrypted data
       setPasswordModalOpen(false); 
-      await processAndExtract(pdfDataUri, pdfFileState.file.name);
+      await startExtraction(unencryptedBytes.buffer, fileState.type, fileState.name);
 
     } catch (e: any) {
       if (e.name === 'PDFInvalidPasswordError') {
@@ -180,6 +168,7 @@ export function ConverterClient() {
       const worksheet = XLSX.utils.json_to_sheet(extractedData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      const fileName = fileState?.name.replace(/\.[^/.]+$/, "") || "converted_data";
       XLSX.writeFile(workbook, `${fileName}.xlsx`);
       toast({ title: "Download Started", description: `Your file ${fileName}.xlsx is being downloaded.` });
     } catch(e) {
@@ -247,9 +236,8 @@ export function ConverterClient() {
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
       <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => {
-        // Only reset if the user is explicitly closing the dialog (e.g. with ESC or close button)
-        // rather than it being closed programmatically on success.
         if (!isOpen) {
+          // If modal is closed without submitting (e.g., ESC), reset everything
           handleReset();
         }
       }}>
