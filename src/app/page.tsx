@@ -43,22 +43,20 @@ export default function Home() {
                 <CarouselContent>
                   <CarouselItem>
                     <Image
-                      src="https://placehold.co/600x400.png"
+                      src="/carousel-1.png"
                       width={600}
                       height={400}
                       alt="Screenshot of PDF to Excel conversion."
                       className="aspect-[3/2] w-full rounded-xl object-cover"
-                      data-ai-hint="pdf excel"
                     />
                   </CarouselItem>
                   <CarouselItem>
                     <Image
-                      src="https://placehold.co/600x400.png"
+                      src="/carousel-2.png"
                       width={600}
                       height={400}
                       alt="Screenshot of secure data processing."
                       className="aspect-[3/2] w-full rounded-xl object-cover"
-                      data-ai-hint="secure data"
                     />
                   </CarouselItem>
                 </CarouselContent>
