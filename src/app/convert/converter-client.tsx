@@ -32,6 +32,7 @@ export function ConverterClient() {
   const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pdfPassword, setPdfPassword] = useState("");
+  const [isDecrypting, setIsDecrypting] = useState(false);
 
   const handleExtractionLogic = async (pdfDataUri: string, originalFileName: string) => {
     setFileName(originalFileName.replace(/\.[^/.]+$/, ""));
@@ -70,7 +71,6 @@ export function ConverterClient() {
   };
 
   const startExtractionWithFile = async (file: File) => {
-    setStep("loading");
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
@@ -89,21 +89,20 @@ export function ConverterClient() {
   };
 
   const handleFileSelect = async (file: File) => {
+    setStep("loading");
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
     reader.onload = async () => {
         try {
             const arrayBuffer = reader.result as ArrayBuffer;
             await PDFDocument.load(arrayBuffer);
-            // Not password protected, proceed normally
             await startExtractionWithFile(file);
         } catch (error: any) {
             if (error.name === 'PDFInvalidPasswordError') {
-                // Password protected
+                setStep("upload");
                 setPendingFile(file);
                 setPasswordModalOpen(true);
             } else {
-                // Other error during PDF loading
                 const message = "Failed to load the PDF file. It might be corrupted.";
                 setErrorMessage(message);
                 setStep("error");
@@ -130,10 +129,9 @@ export function ConverterClient() {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const fileToProcess = pendingFile;
-    if (!fileToProcess || !pdfPassword) return;
+    if (!fileToProcess || !pdfPassword || isDecrypting) return;
 
-    setPasswordModalOpen(false);
-    setStep("loading");
+    setIsDecrypting(true);
 
     const reader = new FileReader();
     reader.readAsArrayBuffer(fileToProcess);
@@ -142,19 +140,17 @@ export function ConverterClient() {
             const arrayBuffer = reader.result as ArrayBuffer;
             const pdfDoc = await PDFDocument.load(arrayBuffer, { password: pdfPassword });
             
-            // Directly save to a base64 data URI
             const pdfDataUri = await pdfDoc.saveAsBase64({ dataUri: true });
             
-            setPdfPassword("");
-            setPendingFile(null);
+            setPasswordModalOpen(false);
+            setStep("loading");
             
             await handleExtractionLogic(pdfDataUri, fileToProcess.name);
+
         } catch (error: any) {
-            setStep("upload"); // Go back to upload view before showing dialog
             if (error.name === 'PDFInvalidPasswordError') {
-                setPasswordModalOpen(true);
-                setPdfPassword(""); // Clear wrong password
-                 toast({
+                setPdfPassword(""); 
+                toast({
                     title: "Invalid Password",
                     description: "The password was incorrect. Please try again.",
                     variant: "destructive",
@@ -168,9 +164,9 @@ export function ConverterClient() {
                     description: message,
                     variant: "destructive",
                 });
-                setPdfPassword("");
-                setPendingFile(null);
             }
+        } finally {
+           setIsDecrypting(false);
         }
     };
     reader.onerror = () => {
@@ -182,6 +178,7 @@ export function ConverterClient() {
             description: message,
             variant: "destructive",
         });
+        setIsDecrypting(false);
     }
   };
 
@@ -205,6 +202,7 @@ export function ConverterClient() {
     setPendingFile(null);
     setPdfPassword("");
     setPasswordModalOpen(false);
+    setIsDecrypting(false);
   };
   
   const uploadDescription = isLoggedIn
@@ -264,7 +262,10 @@ export function ConverterClient() {
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
-      <Dialog open={isPasswordModalOpen} onOpenChange={setPasswordModalOpen}>
+      <Dialog open={isPasswordModalOpen} onOpenChange={(open) => {
+          if (!open) handleReset();
+          else setPasswordModalOpen(true);
+      }}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Password Required</DialogTitle>
@@ -273,16 +274,19 @@ export function ConverterClient() {
                 </DialogDescription>
             </DialogHeader>
             <form onSubmit={handlePasswordSubmit}>
-                <div className="grid gap-4 py-4">
+                <fieldset disabled={isDecrypting} className="space-y-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="password-input" className="text-right">Password</Label>
                         <Input id="password-input" type="password" value={pdfPassword} onChange={(e) => setPdfPassword(e.target.value)} className="col-span-3" autoFocus />
                     </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="ghost" onClick={handleReset}>Cancel</Button>
-                    <Button type="submit">Submit</Button>
-                </DialogFooter>
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={handleReset}>Cancel</Button>
+                        <Button type="submit" disabled={isDecrypting}>
+                            {isDecrypting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Submit
+                        </Button>
+                    </DialogFooter>
+                </fieldset>
             </form>
         </DialogContent>
       </Dialog>
