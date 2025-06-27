@@ -37,7 +37,7 @@ export type ExtractTabularDataOutput = z.infer<typeof ExtractTabularDataOutputSc
 export async function extractTabularData(input: ExtractTabularDataInput): Promise<ExtractTabularDataOutput> {
   if (!input.isLoggedIn) {
     const ip = headers().get('x-forwarded-for') ?? '127.0.0.1';
-    const { allowed } = checkRateLimit(ip);
+    const { allowed } = await checkRateLimit(ip);
     if (!allowed) {
       throw new Error("You have exceeded the limit of 2 conversions per 6 hours for guest users. Please log in or upgrade to Pro for unlimited conversions.");
     }
@@ -47,7 +47,7 @@ export async function extractTabularData(input: ExtractTabularDataInput): Promis
 
   if (!input.isLoggedIn) {
      const ip = headers().get('x-forwarded-for') ?? '127.0.0.1';
-     recordUsage(ip);
+     await recordUsage(ip);
   }
 
   return result;

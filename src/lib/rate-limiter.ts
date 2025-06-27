@@ -1,4 +1,3 @@
-
 'use server';
 
 // This is a simple in-memory rate limiter.
@@ -7,7 +6,7 @@ const usage = new Map<string, number[]>();
 const LIMIT = 2;
 const DURATION = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
 
-export function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
+export async function checkRateLimit(ip: string): Promise<{ allowed: boolean; remaining: number }> {
     const now = Date.now();
     const userTimestamps = usage.get(ip) || [];
 
@@ -25,7 +24,7 @@ export function checkRateLimit(ip: string): { allowed: boolean; remaining: numbe
     return { allowed: false, remaining: 0 };
 }
 
-export function recordUsage(ip: string) {
+export async function recordUsage(ip: string): Promise<void> {
     const now = Date.now();
     const userTimestamps = usage.get(ip) || [];
     
