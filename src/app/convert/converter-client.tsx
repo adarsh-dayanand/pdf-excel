@@ -128,19 +128,20 @@ export function ConverterClient() {
   
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pendingFile || !pdfPassword) return;
+    const fileToProcess = pendingFile;
+    if (!fileToProcess || !pdfPassword) return;
 
     setPasswordModalOpen(false);
     setStep("loading");
 
     const reader = new FileReader();
-    reader.readAsArrayBuffer(pendingFile);
+    reader.readAsArrayBuffer(fileToProcess);
     reader.onload = async () => {
         try {
             const arrayBuffer = reader.result as ArrayBuffer;
             const pdfDoc = await PDFDocument.load(arrayBuffer, { password: pdfPassword });
             const pdfBytes = await pdfDoc.save();
-            const decryptedFile = new File([pdfBytes], pendingFile.name, { type: "application/pdf" });
+            const decryptedFile = new File([pdfBytes], fileToProcess.name, { type: "application/pdf" });
             
             setPdfPassword("");
             setPendingFile(null);
@@ -263,7 +264,7 @@ export function ConverterClient() {
       </div>
       <PricingModal isOpen={isPricingModalOpen} onOpenChange={setPricingModalOpen} />
 
-      <Dialog open={isPasswordModalOpen} onOpenChange={(isOpen) => { if (!isOpen) handleReset(); setPasswordModalOpen(isOpen); }}>
+      <Dialog open={isPasswordModalOpen} onOpenChange={setPasswordModalOpen}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Password Required</DialogTitle>
@@ -279,6 +280,7 @@ export function ConverterClient() {
                     </div>
                 </div>
                 <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={handleReset}>Cancel</Button>
                     <Button type="submit">Submit</Button>
                 </DialogFooter>
             </form>
